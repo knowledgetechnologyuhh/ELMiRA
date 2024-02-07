@@ -1,4 +1,9 @@
-from transformers import OwlViTProcessor, OwlViTForObjectDetection, Owlv2Processor, Owlv2ForObjectDetection
+from transformers import (
+    OwlViTProcessor,
+    OwlViTForObjectDetection,
+    Owlv2Processor,
+    Owlv2ForObjectDetection,
+)
 import cv2
 import skimage
 import os
@@ -11,18 +16,26 @@ from transformers.image_utils import ImageFeatureExtractionMixin
 
 
 class OWLv2(nn.Module):
-    def __init__(self, owl_version='owlv2', score_threshold=0.1):
+    def __init__(self, owl_version="owlv2", score_threshold=0.1):
         super(OWLv2, self).__init__()
         if torch.cuda.is_available():
             self.device = torch.device("cuda")
         else:
             self.device = torch.device("cpu")
-        if owl_version == 'owl-vit':
-            self.model = OwlViTForObjectDetection.from_pretrained("google/owlvit-base-patch32")
-            self.processor = OwlViTProcessor.from_pretrained("google/owlvit-base-patch32")
+        if owl_version == "owl-vit":
+            self.model = OwlViTForObjectDetection.from_pretrained(
+                "google/owlvit-base-patch32"
+            )
+            self.processor = OwlViTProcessor.from_pretrained(
+                "google/owlvit-base-patch32"
+            )
         else:
-            self.processor = Owlv2Processor.from_pretrained("google/owlv2-base-patch16-ensemble")
-            self.model = Owlv2ForObjectDetection.from_pretrained("google/owlv2-base-patch16-ensemble")
+            self.processor = Owlv2Processor.from_pretrained(
+                "google/owlv2-base-patch16-ensemble"
+            )
+            self.model = Owlv2ForObjectDetection.from_pretrained(
+                "google/owlv2-base-patch16-ensemble"
+            )
         self.mixin = ImageFeatureExtractionMixin()
         self.score_threshold = score_threshold
 
@@ -35,7 +48,9 @@ class OWLv2(nn.Module):
         image = Image.open(image_path)
         if image.height != image.width:
             image = self.mixin.resize(image, min(image.height, image.width))
-        inputs = self.processor(text=text_query, images=image, return_tensors="pt").to(self.device)
+        inputs = self.processor(text=text_query, images=image, return_tensors="pt").to(
+            self.device
+        )
 
         # get predictions
         with torch.no_grad():
@@ -54,7 +69,7 @@ class OWLv2(nn.Module):
             image = self.mixin.resize(image, image_size)
             input_image = np.asarray(image).astype(np.float32) / 255.0
             self.plot_predictions(input_image, text_query, scores, boxes, labels)
-        return cx, cy+h/2
+        return cx, cy + h / 2
 
     def plot_predictions(self, input_image, text_queries, scores, boxes, labels):
         fig, ax = plt.subplots(1, 1, figsize=(8, 8))
@@ -66,8 +81,11 @@ class OWLv2(nn.Module):
                 continue
 
             cx, cy, w, h = box
-            ax.plot([cx - w / 2, cx + w / 2, cx + w / 2, cx - w / 2, cx - w / 2],
-                    [cy - h / 2, cy - h / 2, cy + h / 2, cy + h / 2, cy - h / 2], "r")
+            ax.plot(
+                [cx - w / 2, cx + w / 2, cx + w / 2, cx - w / 2, cx - w / 2],
+                [cy - h / 2, cy - h / 2, cy + h / 2, cy + h / 2, cy - h / 2],
+                "r",
+            )
             ax.text(
                 cx - w / 2,
                 cy + h / 2 + 0.015,
@@ -78,12 +96,18 @@ class OWLv2(nn.Module):
                 bbox={
                     "facecolor": "white",
                     "edgecolor": "red",
-                    "boxstyle": "square,pad=.3"
-                })
+                    "boxstyle": "square,pad=.3",
+                },
+            )
         plt.show()
 
-owlv2 = OWLv2('owlv2')
-text_query = ["cube", "cup"]#["human face", "rocket", "nasa badge", "star-spangled banner"]#
-image_path = '/informatik3/wtm/home/oezdemir/Downloads/nico_examples_higher/picture-2024-01-31T14-51-26.738369.png'#target_RLBench_three_buttons_120_vars/image_train/230510/target008008/0.png'
-x, y = owlv2(image_path, text_query, True)
-print("X and Y position of the target object: ", x, y)
+
+if __name__ == "__main__":
+    owlv2 = OWLv2("owlv2")
+    text_query = [
+        "cube",
+        "cup",
+    ]  # ["human face", "rocket", "nasa badge", "star-spangled banner"]#
+    image_path = "/informatik3/wtm/home/oezdemir/Downloads/nico_examples_higher/picture-2024-01-31T14-51-26.738369.png"  # target_RLBench_three_buttons_120_vars/image_train/230510/target008008/0.png'
+    x, y = owlv2(image_path, text_query, True)
+    print("X and Y position of the target object: ", x, y)
