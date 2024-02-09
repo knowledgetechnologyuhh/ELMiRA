@@ -169,7 +169,7 @@
 		<parent link="right_lower_arm:11"/>
 		<child link="right_wrist:11"/>
 		<!-- <origin rpy="0 0 0.028946" xyz="0 0.0102 -0.12605"/> -->
-		<origin rpy="0 0 0.028946" xyz="0 0.0102 -0.14105"/>
+		<origin rpy="0 0 0.028946" xyz="0 0.0102 -0.11105"/>
 		<axis xyz="0 0 1"/>
 		<limit effort="30" lower="-1.571" upper="1.571" velocity="1"/>
 	</joint>

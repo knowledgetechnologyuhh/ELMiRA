@@ -16,7 +16,7 @@ def main():
     owlv2 = OWLv2("owlv2")
     # Text and Image input
     text_query = [
-        "Touch the cup"
+        "Touch the sponge"
     ]  # ["human face", "rocket", "nasa badge", "star-spangled banner"]#
     robot.look_down()
     image_path = camera.record_image()
@@ -60,9 +60,8 @@ def main():
     input("Press enter to continue")
     # Cleanup
     robot.initial_position()
+    robot.close()
     camera.close()
-    del camera
-    del robot
 
 
 if __name__ == "__main__":

@@ -166,7 +166,7 @@
 		<parent link="left_lower_arm:11"/>
 		<child link="left_wrist:11"/>
 		<!-- <origin rpy="3.141593 0 0.028703" xyz="0 -0.010201 -0.12555"/> -->
-		<origin rpy="3.141593 0 0.028703" xyz="0 -0.010201 -0.14055"/>
+		<origin rpy="3.141593 0 0.028703" xyz="0 -0.010201 -0.11055"/>
 		<axis xyz="0 0 -1"/>
 		<limit effort="30" lower="-1.396" upper="1.396" velocity="1"/>
 	</joint>

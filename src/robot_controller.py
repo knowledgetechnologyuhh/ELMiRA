@@ -1,4 +1,5 @@
 from os.path import dirname, abspath, join, pardir
+import signal
 import time
 import torch
 from nicomotion.Motion import Motion
@@ -18,16 +19,30 @@ class RobotController:
             dirname(abspath(__file__)), pardir, "json/nico_humanoid_upper.json"
         )
         self.robot = Motion(json_config)
+
+        # Emergency sigint handler to stop the robot with ctrl-c
+        def sigint_handler(sig, frame):
+            print("Execution aborted")
+            self.robot.disableTorqueAll()
+            exit(130)
+
+        signal.signal(signal.SIGINT, sigint_handler)
         self.initial_position()
 
     def __del__(self):
+        if self.robot is not None:
+            self.close()
+
+    def close(self):
         self.robot.disableTorqueAll()
-        del self.robot
+        self.robot.cleanup()
+        self.robot = None
 
     def initial_position(self):
         self.look_up()
         self.move_motors_to_angles(
-            self.left_arm.joint_names[:6], [45.0, -45.0, 0.0, 50.0, 0.0, 0.0]
+            self.left_arm.joint_names[:6] + self.right_arm.joint_names[:6],
+            [45.0, -45.0, 0.0, 50.0, 0.0, 0.0, -45.0, 45.0, 0.0, -50.0, 0.0, 0.0],
         )
 
     def look_up(self, speed=0.05):
@@ -72,7 +87,9 @@ class RobotController:
                 "Inverse kinematics result below safe height"
             )
         if distance > 0.02:
-            raise UnsafeKinematicsException("Inverse kinematics result too imprecise")
+            raise UnsafeKinematicsException(
+                f"Inverse kinematics result too imprecise (Error: {distance.item()}cm)"
+            )
 
     def touch(self, x, y, z=0.68):
         if y >= 0:
@@ -83,7 +100,7 @@ class RobotController:
             euler_angles = torch.tensor([0.0, 0.0, -90.0])
         position = torch.cat(
             (
-                torch.unsqueeze(x + 0.015, dim=0),
+                torch.unsqueeze(x - 0.03, dim=0),
                 torch.unsqueeze(y, dim=0),
                 torch.tensor([z]).to("cuda"),
             )
