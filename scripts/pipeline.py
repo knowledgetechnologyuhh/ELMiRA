@@ -10,6 +10,7 @@ import rospy
 from speech_asr_client import SpeechASRClient
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
+
 def main():
     # Initialize Camera
     camera = ImageRecorder()
@@ -63,15 +64,25 @@ def main():
         print("User speech input: ", text_query)
 
         # Input the speech text to the LLM to extract action and object words
-        inputs_action = llm_tokeniser("Find the action in the following statement: " + text_query,
-                                  return_tensors="pt")
-        inputs_object = llm_tokeniser("Find the target object in the following statement: Can you touch the ball?",
-                                  return_tensors="pt")
+        inputs_action = llm_tokeniser(
+            # "Find the action in the following statement: " + text_query,
+            "Categorize the action in the following statement into 'touch', 'push' or show : "
+            + text_query,
+            return_tensors="pt",
+        )
+        inputs_object = llm_tokeniser(
+            "Find the target object in the following statement: " + text_query,
+            return_tensors="pt",
+        )
 
         outputs_action = llm.generate(**inputs_action)
         outputs_object = llm.generate(**inputs_object)
-        action = llm_tokeniser.batch_decode(outputs_action, skip_special_tokens=True)
-        target_object = llm_tokeniser.batch_decode(outputs_object, skip_special_tokens=True)
+        action = llm_tokeniser.batch_decode(outputs_action, skip_special_tokens=True)[0]
+        print(f"Action: {action}")
+        target_object = llm_tokeniser.batch_decode(
+            outputs_object, skip_special_tokens=True
+        )
+        print(f"Target object: {target_object}")
 
         image_path = camera.record_image()
 
@@ -122,13 +133,13 @@ def main():
             target_positions[0][0].item(),
             target_positions[0][1].item(),
         )
-        if action == 'touch':
+        if action == "touch":
             robot.touch(target_positions[0][0], target_positions[0][1])
-        elif action == 'show' or action == 'point at':
+        elif action == "show" or action == "point at" or action == "point":
             robot.show(target_positions[0][0], target_positions[0][1])
         else:
             robot.push(target_positions[0][0], target_positions[0][1])
-        #robot.touch(target_positions[0][0], target_positions[0][1])
+        # robot.touch(target_positions[0][0], target_positions[0][1])
         in_str = input("Press enter to continue, q to quit")
         robot.initial_position()
         if in_str == "q":

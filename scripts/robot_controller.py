@@ -107,6 +107,12 @@ class RobotController:
         )
         self.move_arm_to_pose(solver, position, euler_angles)
 
+    def show(self, x, y, z=0.68):
+        print("Execute show action")
+
+    def push(self, x, y, z=0.68):
+        print("Execute push action")
+
 
 class UnsafeKinematicsException(Exception):
     pass
