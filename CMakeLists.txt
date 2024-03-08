@@ -53,6 +53,7 @@ add_message_files(
     FILES
     SpeechStatus.msg
     SpeechStatusArray.msg
+    DetectedObject.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -60,6 +61,8 @@ add_service_files(
    FILES
     SpeakText.srv
     SpeakCachedText.srv
+    DetectObjects.srv
+    CoordinateTransfer.srv
  )
 
 ## Generate actions in the 'action' folder

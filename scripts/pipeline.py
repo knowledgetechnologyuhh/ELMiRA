@@ -66,7 +66,7 @@ def main():
         # Input the speech text to the LLM to extract action and object words
         inputs_action = llm_tokeniser(
             # "Find the action in the following statement: " + text_query,
-            "Categorize the action in the following statement into 'touch', 'push' or show : "
+            "Categorize the action in the following statement into 'touch', 'push' or 'show': "
             + text_query,
             return_tensors="pt",
         )

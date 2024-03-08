@@ -48,3 +48,37 @@ class ImplicitCoordinateTransfer:
                 sigma *= sigma_decay
             y_i = self.model(samples).squeeze(-1).softmax(-1).argmax(-1)
             return samples[torch.arange(samples.shape[0]), y_i, 2:]
+
+
+class ImageCoordinateFilter:
+    def __init__(
+        self,
+        workspace=torch.tensor(
+            [
+                [0.0396, 0.7160],
+                [0.2021, 0.3444],
+                [0.7646, 0.3278],
+                [0.9448, 0.7313],
+                [0.8162, 0.8069],
+                [0.6391, 0.8632],
+                [0.4380, 0.8757],
+                [0.2599, 0.8375],
+                [0.1328, 0.7771],
+            ]
+        ),
+    ):
+        self.workspace = workspace
+
+    def is_within_workspace(self, point):
+        cross_products = torch.tensor(
+            [
+                (point[0] - self.workspace[i - 1][0])
+                * (self.workspace[i][1] - self.workspace[i - 1][1])
+                - (self.workspace[i][0] - self.workspace[i - 1][0])
+                * (point[1] - self.workspace[i - 1][1])
+                for i in range(len(self.workspace))
+            ],
+        )
+        return torch.logical_or(
+            torch.all(cross_products <= 0), torch.all(cross_products >= 0)
+        )
