@@ -1,5 +1,8 @@
 This is the repository for the NICO demo.
 
+### Modular Architecture
+![alt text](NICO-demo-pipeline-comprehensive.drawio.png)
+
 ### Installation
 
 1. Install `NICO-software` and place this repository inside `NICO-software/api/src`
