@@ -7,6 +7,7 @@ import smach_ros
 from nico_demo.msg import PerformASRAction
 from nico_demo.srv import DetectObjects, CoordinateTransfer
 from states.language_to_action import FlanT5ActionExtractor
+from states.move_robot import MoveRobot, MoveRobotPart
 
 
 def main():
@@ -15,7 +16,15 @@ def main():
     # Create a state machine
     sm = smach.StateMachine(outcomes=["succeeded", "aborted", "preempted"])
 
+    # set topic names(TODO change into proper NICO paths TODO turn into rospy param?)
+    MOTION_SUB_LEFT = "/left/open_manipulator_p/joint_states"
+    MOTION_SRV_LEFT = "/left/open_manipulator_p/goal_joint_space_path"
+    MOTION_SUB_RIGHT = "/right/open_manipulator_p/joint_states"
+    MOTION_SRV_RIGHT = "/right/open_manipulator_p/goal_joint_space_path"
+    MOTION_SUB_HEAD = "/NICOL/joint_states"
+    MOTION_SRV_HEAD = "/NICOL/head/goal_joint_space_path"
     # set initial userdata
+    # speech recognition
     sm.userdata.asr_detect_start = rospy.get_param("~detect_start", True)
     sm.userdata.asr_detect_stop = rospy.get_param("~detect_stop", True)
     sm.userdata.asr_start_timeout = rospy.get_param("~start_timeout", 0.0)
@@ -23,9 +32,54 @@ def main():
     sm.userdata.asr_max_duration = rospy.get_param("~max_duration", 30.0)
     sm.userdata.asr_min_period = rospy.get_param("~min_period", 3.0)
     sm.userdata.asr_live_text = rospy.get_param("~live_text", True)
+    # robot motion
+    sm.userdata.motion_joints_left = [
+        "l_shoulder_z",
+        "l_shoulder_y",
+        "l_arm_x",
+        "l_elbow_y",
+        "l_wrist_z",
+        "l_wrist_x",
+    ]
+    sm.userdata.motion_init_left = [0.157, 0.0, 1.57, 1.57, 1.39, 0.0]
+    sm.userdata.motion_joints_right = [
+        "r_shoulder_z",
+        "r_shoulder_y",
+        "r_arm_x",
+        "r_elbow_y",
+        "r_wrist_z",
+        "r_wrist_x",
+    ]
+    sm.userdata.motion_init_right = [-0.157, 0.0, -1.57, -1.57, -1.39, 0.0]
+    sm.userdata.motion_joints_head = [
+        "head_z",
+        "head_y",
+    ]
+    sm.userdata.motion_init_head = [0.0, 0.8203]
 
     # Add states
     with sm:
+        # TODO move to initial state
+        smach.StateMachine.add(
+            "INITIAL_ROBOT_POSE",
+            MoveRobot(
+                MOTION_SRV_HEAD,
+                MOTION_SUB_HEAD,
+                MOTION_SRV_LEFT,
+                MOTION_SUB_LEFT,
+                MOTION_SRV_RIGHT,
+                MOTION_SUB_RIGHT,
+            ),
+            transitions={"movement_done": "SPEECH_ASR"},
+            remapping={
+                "names_head": "motion_joints_head",
+                "positions_head": "motion_init_head",
+                "names_left": "motion_joints_left",
+                "positions_left": "motion_init_left",
+                "names_right": "motion_joints_right",
+                "positions_right": "motion_init_right",
+            },
+        )
         # listen for human command via speech asr ros action
         smach.StateMachine.add(
             "SPEECH_ASR",
@@ -121,8 +175,6 @@ def main():
     if outcome == "succeeded":
         rospy.loginfo(f"real x: {sm.userdata.real_x}")
         rospy.loginfo(f"real y: {sm.userdata.real_y}")
-    # Stop introspection server after execution
-    rospy.sleep(2.0)
     sis.stop()
 
 

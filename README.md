@@ -17,6 +17,12 @@ This is the repository for the NICO demo.
 
 1. Run all required ros nodes:
 
+    #### motion + joint controller
+    ```bash
+    source activate.bash
+    roslaunch nicoros joint_controller.launch
+    ```
+
     #### nico camera:
     ```bash
     source activate.bash
