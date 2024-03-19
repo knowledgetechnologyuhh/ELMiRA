@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
 
+import numpy as np
 import rospy
 import smach
 import smach_ros
 
 from nico_demo.msg import PerformASRAction
-from nico_demo.srv import DetectObjects, CoordinateTransfer
+from nico_demo.srv import DetectObjects, CoordinateTransfer, InverseKinematics
+
 from states.language_to_action import FlanT5ActionExtractor
 from states.move_robot import MoveRobot, MoveRobotPart
+from states.action_planner import ActionTrajectory
 
 
 def main():
@@ -56,10 +59,12 @@ def main():
         "head_y",
     ]
     sm.userdata.motion_init_head = [0.0, 0.8203]
+    sm.userdata.table_z = 0.68
 
     # Add states
     with sm:
-        # TODO move to initial state
+        # move to initial state
+        # TODO maybe merge with action execution?
         smach.StateMachine.add(
             "INITIAL_ROBOT_POSE",
             MoveRobot(
@@ -111,23 +116,28 @@ def main():
         )
         # extract action and target object from detected speech with LLM
         # TODO turn into ros service?
-        # TODO use Vicuna or GPT
+        # TODO use Vicuna or GPT4
         smach.StateMachine.add(
             "LLM_SPEECH_PROCESSOR",
             FlanT5ActionExtractor(),
             transitions={
-                "action_detected": "OBJECT_DETECTION"
+                "action_detected": "OBJECT_DETECTION",
+                "end_demo": "succeeded",
             },  # TODO more transitions (i.e. robot action, repeat asr, demo end?)
             remapping={"text_query": "asr_result_text"},
         )
+
+        # TODO make LLM return list of actions and process with smach iterator container
 
         # callback to post-process detected objects
         def object_response_callback(userdata, response):
             if len(response.objects) == 0:
                 return "object_not_found"
-            userdata.image_x = response.objects[0].center_x
+            highest = np.argmax([o.score for o in response.objects])
+            userdata.image_x = response.objects[highest].center_x
             userdata.image_y = (
-                response.objects[0].center_y + response.objects[0].height / 2
+                response.objects[highest].center_y
+                + response.objects[highest].height / 2
             )
             return "succeeded"
 
@@ -150,7 +160,6 @@ def main():
                 "texts": "target_object",
             },
         )
-        # TODO process bounding boxes
         # image to real
         smach.StateMachine.add(
             "COORDINATE_TRANSFER",
@@ -160,21 +169,76 @@ def main():
                 request_slots=["image_x", "image_y"],
                 response_slots=["real_x", "real_y"],
             ),
-            transitions={"succeeded": "succeeded"},
+            transitions={"succeeded": "PLAN_ACTION_TARGETS"},
+        )
+        # set action target
+        # TODO one state per action? maybe in sub-statemachine?
+        smach.StateMachine.add(
+            "PLAN_ACTION_TARGETS",
+            ActionTrajectory(),
+            transitions={
+                "succeeded": "SOLVE_IK",
+                "unknown_action": "SPEECH_ASR",
+            },
+            remapping={
+                "target_x": "real_x",
+                "target_y": "real_y",
+                "target_z": "table_z",
+            },
         )
 
-        # TODO ros service?
-        # TODO Perform action
-        # TODO one state per action? maybe in sub-statemachine?
+        # callback to post-process detected objects
+        def ik_response_callback(userdata, response):
+            if userdata.planning_group == "l_arm":
+                return "move_left_arm"
+            elif userdata.planning_group == "r_arm":
+                return "move_right_arm"
+            rospy.logerr(f"Unknown planning group {userdata.planning_group}")
+            return "aborted"
+
+        # IK Solver
+        # TODO make batched or also put inside iterator (see below)
+        smach.StateMachine.add(
+            "SOLVE_IK",
+            smach_ros.ServiceState(
+                "inverse_kinematics",
+                InverseKinematics,
+                input_keys=["planning_group"],
+                request_slots=["planning_group", "pose"],
+                response_slots=["joint_name", "position"],
+                response_cb=ik_response_callback,
+                outcomes=["move_left_arm", "move_right_arm"],
+            ),
+            transitions={
+                "move_left_arm": "MOVE_LEFT_ARM",
+                "move_right_arm": "MOVE_RIGHT_ARM",
+            },
+            remapping={
+                "joint_name": "action_joints",
+                "position": "action_positions",
+            },
+        )
+        # execute movement
+        # TODO move into multi-point iterator state
+        # TODO potentially combine with initial pose
+        smach.StateMachine.add(
+            "MOVE_LEFT_ARM",
+            MoveRobotPart(MOTION_SRV_LEFT, MOTION_SUB_LEFT),
+            remapping={"names": "action_joints", "positions": "action_positions"},
+            transitions={"succeeded": "INITIAL_ROBOT_POSE"},
+        )
+        smach.StateMachine.add(
+            "MOVE_RIGHT_ARM",
+            MoveRobotPart(MOTION_SRV_RIGHT, MOTION_SUB_RIGHT),
+            remapping={"names": "action_joints", "positions": "action_positions"},
+            transitions={"succeeded": "INITIAL_ROBOT_POSE"},
+        )
 
     # Create and start the introspection server for visualization
     sis = smach_ros.IntrospectionServer("nico_demo_introspection", sm, "/NICO_DEMO")
     sis.start()
     # Execute state machine
     outcome = sm.execute()
-    if outcome == "succeeded":
-        rospy.loginfo(f"real x: {sm.userdata.real_x}")
-        rospy.loginfo(f"real y: {sm.userdata.real_y}")
     sis.stop()
 
 

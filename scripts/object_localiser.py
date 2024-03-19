@@ -164,7 +164,7 @@ class OWLv2Server:
         # return response with detected objects
         return DetectObjectsResponse(
             [
-                DetectedObject(request.texts[labels[i]], *boxes[i])
+                DetectedObject(request.texts[labels[i]], scores[i], *boxes[i])
                 for i in range(len(labels))
             ]
         )

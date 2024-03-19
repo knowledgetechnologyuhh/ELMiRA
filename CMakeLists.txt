@@ -13,6 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   message_generation
   actionlib_msgs
+  geometry_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -63,6 +64,7 @@ add_service_files(
     SpeakCachedText.srv
     DetectObjects.srv
     CoordinateTransfer.srv
+    InverseKinematics.srv
  )
 
 ## Generate actions in the 'action' folder
@@ -76,6 +78,7 @@ generate_messages(
    DEPENDENCIES
    std_msgs
    actionlib_msgs
+   geometry_msgs
 )
 
 ################################################

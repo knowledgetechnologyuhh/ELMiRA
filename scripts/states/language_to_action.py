@@ -10,7 +10,8 @@ class FlanT5ActionExtractor(smach.State):
         smach.State.__init__(
             self,
             outcomes=[
-                "action_detected"
+                "action_detected",
+                "end_demo",
             ],  # TODO alternative outcomes (i.e. robot action, repeat asr, end demo)
             input_keys=["text_query"],
             output_keys=["action", "target_object"],
@@ -24,7 +25,7 @@ class FlanT5ActionExtractor(smach.State):
         # Input the speech text to the LLM to extract action and object words
         inputs_action = self.llm_tokeniser(
             # "Find the action in the following statement: " + text_query,
-            "Categorize the action in the following statement into 'touch', 'push' or 'show': "
+            "Categorize the action in the following statement into 'touch', 'push', 'show' or 'cancel': "
             + userdata.text_query,
             return_tensors="pt",
         )
@@ -41,8 +42,11 @@ class FlanT5ActionExtractor(smach.State):
         target_object = self.llm_tokeniser.batch_decode(
             outputs_object, skip_special_tokens=True
         )
-        rospy.loginfo(f"Action: {action}")
-        rospy.loginfo(f"Target: {target_object}")
-        userdata.action = action
-        userdata.target_object = target_object
-        return "action_detected"
+        if action == "cancel":
+            return "end_demo"
+        else:
+            rospy.loginfo(f"Action: {action}")
+            rospy.loginfo(f"Target: {target_object}")
+            userdata.action = action
+            userdata.target_object = target_object
+            return "action_detected"
