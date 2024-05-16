@@ -1,0 +1,4 @@
+string prompt
+---
+bool object_visible
+string system_message

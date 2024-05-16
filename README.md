@@ -20,16 +20,16 @@ This is the repository for the NICO demo.
 
 1. Run all required ros nodes:
 
-    #### motion + joint controller
-    ```bash
-    source activate.bash
-    roslaunch nicoros joint_controller.launch
-    ```
-
     #### nico camera:
     ```bash
     source activate.bash
     roslaunch nico_demo camera.launch
+    ```
+
+    #### motion + joint controller
+    ```bash
+    source activate.bash
+    roslaunch nicoros joint_controller.launch
     ```
 
     #### speech asr:
@@ -49,6 +49,26 @@ This is the repository for the NICO demo.
     source activate.bash
     rosrun nico_demo coordinate_transfer.py
     ```
+
+    #### EvoIK:
+    ```bash
+    source activate.bash
+    rosrun nico_demo ik_solver.py
+    ```
+
+    #### text to speech:
+    ```bash
+    source activate.bash
+    rosrun nicoros TextToSpeech.py
+    ```
+
+    #### gpt 4:
+    ```bash
+    export OPENAI_API_KEY='yourkey'
+    source activate.bash
+    rosrun nico_demo llm_api.py
+    ```
+
 2. (optional) run visualization nodes
 
     #### smach image publisher:

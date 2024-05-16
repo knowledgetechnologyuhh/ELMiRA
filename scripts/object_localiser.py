@@ -6,14 +6,10 @@ from transformers import (
     Owlv2Processor,
     Owlv2ForObjectDetection,
 )
-import cv2
-import skimage
-import os
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 import torch
 import torch.nn as nn
-import matplotlib.pyplot as plt
 from transformers.image_utils import ImageFeatureExtractionMixin
 
 import cv_bridge
@@ -25,7 +21,7 @@ from nico_demo.srv import DetectObjects, DetectObjectsResponse
 
 
 class OWLv2(nn.Module):
-    def __init__(self, owl_version="owlv2", score_threshold=0.1):
+    def __init__(self, owl_version="owlv2", score_threshold=0.05):
         super(OWLv2, self).__init__()
         if torch.cuda.is_available():
             self.device = torch.device("cuda")

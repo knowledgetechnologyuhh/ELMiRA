@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 from evo_ik import EvoIK
+import numpy as np
 from nico_demo.srv import InverseKinematics, InverseKinematicsResponse
+from nico_demo.msg import JointPosition
 from os.path import dirname, abspath, join, pardir
 import rospy
 import torch
@@ -30,16 +32,34 @@ class KinematicsServer:
         else:
             rospy.logerr(f"Unknown planning group {request.planning_group}")
             return
-        response = InverseKinematicsResponse()
-        response.joint_name = solver.joint_names[:6]
-        pos = request.pose.position
-        quat = request.pose.orientation
-        response.position = solver.inverse_kinematics(
-            torch.tensor([pos.x, pos.y, pos.z]).to("cuda"),
-            torch.tensor([quat.w, quat.x, quat.y, quat.z]).to("cuda"),
-            max_steps=100,
-        )
-        return response
+        # ensure that initial position is in the right order
+        joint_ids = np.argsort(request.initial_position.joint_name)
+        initial_joints = torch.tensor(request.initial_position.position)[
+            joint_ids[
+                np.searchsorted(
+                    request.initial_position.joint_name,
+                    solver.joint_names[:6],
+                    sorter=joint_ids,
+                )
+            ]
+        ]
+        # solve trajectory
+        results = []
+        for pose in request.poses:
+            ik_result = JointPosition()
+            ik_result.joint_name = solver.joint_names[:6]
+            pos = pose.position
+            quat = pose.orientation
+            ik_result.position = solver.inverse_kinematics(
+                torch.tensor([pos.x, pos.y, pos.z]).to("cuda"),
+                torch.tensor([quat.w, quat.x, quat.y, quat.z]).to("cuda"),
+                initial_joints=initial_joints,
+                max_steps=100,
+            )
+            results.append(ik_result)
+            # use solution as starting point for the next one
+            initial_joints = ik_result.position
+        return InverseKinematicsResponse(results)
 
     # def get_forward_kinematic(self, solver):
     #     rad_angles = torch.tensor(

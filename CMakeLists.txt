@@ -55,6 +55,7 @@ add_message_files(
     SpeechStatus.msg
     SpeechStatusArray.msg
     DetectedObject.msg
+    JointPosition.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -65,6 +66,8 @@ add_service_files(
     DetectObjects.srv
     CoordinateTransfer.srv
     InverseKinematics.srv
+    PromptTextLLM.srv
+    PromptVisionLLM.srv
  )
 
 ## Generate actions in the 'action' folder

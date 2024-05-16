@@ -1,5 +1,5 @@
 string planning_group
-geometry_msgs/Pose pose
+geometry_msgs/Pose[] poses
+JointPosition initial_position
 ---
-string[] joint_name
-float64[] position
+JointPosition[] positions

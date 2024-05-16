@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
 
-import numpy as np
 import rospy
 import smach
 import smach_ros
+import yaml
 
+from actionlib_msgs.msg import GoalStatus
 from nico_demo.msg import PerformASRAction
-from nico_demo.srv import DetectObjects, CoordinateTransfer, InverseKinematics
+from nico_demo.srv import PromptTextLLM
+from nicomsg.srv import SayText
 
-from states.language_to_action import FlanT5ActionExtractor
-from states.move_robot import MoveRobot, MoveRobotPart
-from states.action_planner import ActionTrajectory
+from states.move_robot import JointTrajectoryIterator, MoveRobotPart
+from states.action_planner import ConcurrentPlanAndVerify  # , PushActionSuccess
+from states.action_parser import ActionParser
 
 
 def main():
@@ -27,6 +29,8 @@ def main():
     MOTION_SUB_HEAD = "/NICOL/joint_states"
     MOTION_SRV_HEAD = "/NICOL/head/goal_joint_space_path"
     # set initial userdata
+    sm.userdata.system_message = ""
+    sm.userdata.llm_input = ""
     # speech recognition
     sm.userdata.asr_detect_start = rospy.get_param("~detect_start", True)
     sm.userdata.asr_detect_stop = rospy.get_param("~detect_stop", True)
@@ -36,55 +40,75 @@ def main():
     sm.userdata.asr_min_period = rospy.get_param("~min_period", 3.0)
     sm.userdata.asr_live_text = rospy.get_param("~live_text", True)
     # robot motion
-    sm.userdata.motion_joints_left = [
-        "l_shoulder_z",
-        "l_shoulder_y",
-        "l_arm_x",
-        "l_elbow_y",
-        "l_wrist_z",
-        "l_wrist_x",
-    ]
-    sm.userdata.motion_init_left = [0.157, 0.0, 1.57, 1.57, 1.39, 0.0]
-    sm.userdata.motion_joints_right = [
-        "r_shoulder_z",
-        "r_shoulder_y",
-        "r_arm_x",
-        "r_elbow_y",
-        "r_wrist_z",
-        "r_wrist_x",
-    ]
-    sm.userdata.motion_init_right = [-0.157, 0.0, -1.57, -1.57, -1.39, 0.0]
-    sm.userdata.motion_joints_head = [
-        "head_z",
-        "head_y",
-    ]
-    sm.userdata.motion_init_head = [0.0, 0.8203]
+    sm.userdata.motion_init_pose = {
+        "l_arm": {
+            "names": [
+                "l_shoulder_z",
+                "l_shoulder_y",
+                "l_arm_x",
+                "l_elbow_y",
+                "l_wrist_z",
+                "l_wrist_x",
+            ],
+            "positions": [0.157, 0.0, 1.57, 1.57, 1.39, 0.0],
+        },
+        "r_arm": {
+            "names": [
+                "r_shoulder_z",
+                "r_shoulder_y",
+                "r_arm_x",
+                "r_elbow_y",
+                "r_wrist_z",
+                "r_wrist_x",
+            ],
+            "positions": [-0.157, 0.0, -1.57, -1.57, -1.39, 0.0],
+        },
+        "head": {
+            "names": [
+                "head_z",
+                "head_y",
+            ],
+            "positions": [0.0, 0.0],  # [0.0, 0.8203],
+        },
+    }
+    sm.userdata.motion_look_down_names = ["head_z", "head_y"]
+    sm.userdata.motion_look_down_positions = [0.0, 0.8203]
     sm.userdata.table_z = 0.68
+    # TTS
+    sm.userdata.tts_language = "en"
+    sm.userdata.tts_pitch = 0.0
+    sm.userdata.tts_speed = 1.0
+    sm.userdata.tts_blocking = True
 
     # Add states
     with sm:
         # move to initial state
-        # TODO maybe merge with action execution?
+        @smach.cb_interface(output_keys=["llm_actions"], outcomes=["initial_pose"])
+        def initial_pose_callback(userdata):
+            userdata.llm_actions = [{"action": "initial_pose"}]
+            with open("experiment_log.txt", "a") as f:
+                print("######## EXPERIMENT START ########", file=f)
+            return "initial_pose"
+
         smach.StateMachine.add(
-            "INITIAL_ROBOT_POSE",
-            MoveRobot(
-                MOTION_SRV_HEAD,
-                MOTION_SUB_HEAD,
-                MOTION_SRV_LEFT,
-                MOTION_SUB_LEFT,
-                MOTION_SRV_RIGHT,
-                MOTION_SUB_RIGHT,
-            ),
-            transitions={"movement_done": "SPEECH_ASR"},
-            remapping={
-                "names_head": "motion_joints_head",
-                "positions_head": "motion_init_head",
-                "names_left": "motion_joints_left",
-                "positions_left": "motion_init_left",
-                "names_right": "motion_joints_right",
-                "positions_right": "motion_init_right",
-            },
+            "INIT",
+            smach.CBState(initial_pose_callback),
+            {"initial_pose": "LLM_RESPONSE_ITERATOR"},
         )
+
+        # callback to post-process asr result
+        def asr_result_callback(userdata, status, result):
+            if status == GoalStatus.SUCCEEDED:
+                if len(result.text) == 0:
+                    rospy.logwarn("Empty speech result")
+                    return "empty"
+                else:
+                    rospy.loginfo(f"USER: {result.text}")
+                    with open("experiment_log.txt", "a") as f:
+                        print(f"USER: {result.text}", file=f)
+                    userdata.llm_input = f"USER: {result.text}"
+                    return "succeeded"
+
         # listen for human command via speech asr ros action
         smach.StateMachine.add(
             "SPEECH_ASR",
@@ -100,9 +124,11 @@ def main():
                     "min_period",
                     "live_text",
                 ],
-                result_slots=["text"],
+                result_cb=asr_result_callback,
+                output_keys=["llm_input"],
+                outcomes=["empty"],
             ),
-            transitions={"succeeded": "LLM_SPEECH_PROCESSOR"},
+            transitions={"succeeded": "LLM_SPEECH_PROCESSOR", "empty": "SPEECH_ASR"},
             remapping={
                 "detect_start": "asr_detect_start",
                 "detect_stop": "asr_detect_stop",
@@ -111,134 +137,214 @@ def main():
                 "max_duration": "asr_max_duration",
                 "min_period": "asr_min_period",
                 "live_text": "asr_live_text",
-                "text": "asr_result_text",
             },
         )
-        # extract action and target object from detected speech with LLM
-        # TODO turn into ros service?
-        # TODO use Vicuna or GPT4
-        smach.StateMachine.add(
-            "LLM_SPEECH_PROCESSOR",
-            FlanT5ActionExtractor(),
-            transitions={
-                "action_detected": "OBJECT_DETECTION",
-                "end_demo": "succeeded",
-            },  # TODO more transitions (i.e. robot action, repeat asr, demo end?)
-            remapping={"text_query": "asr_result_text"},
-        )
-
-        # TODO make LLM return list of actions and process with smach iterator container
 
         # callback to post-process detected objects
-        def object_response_callback(userdata, response):
-            if len(response.objects) == 0:
-                return "object_not_found"
-            highest = np.argmax([o.score for o in response.objects])
-            userdata.image_x = response.objects[highest].center_x
-            userdata.image_y = (
-                response.objects[highest].center_y
-                + response.objects[highest].height / 2
-            )
+        def llm_response_callback(userdata, response):
+            rospy.loginfo(f"LLM output:\n{response.response}")
+            userdata.llm_actions = yaml.safe_load(response.response)
             return "succeeded"
 
-        # detect object in image space
         smach.StateMachine.add(
-            "OBJECT_DETECTION",
+            "LLM_SPEECH_PROCESSOR",
             smach_ros.ServiceState(
-                "object_detector",
-                DetectObjects,
-                request_slots=["texts"],
-                response_cb=object_response_callback,
-                output_keys=["image_x", "image_y"],
-                outcomes=["object_not_found"],
+                "llm_chat",
+                PromptTextLLM,
+                request_slots=["prompt"],
+                response_cb=llm_response_callback,
+                output_keys=["llm_actions"],
             ),
+            remapping={"prompt": "llm_input"},
             transitions={
-                "succeeded": "COORDINATE_TRANSFER",
-                "object_not_found": "SPEECH_ASR",
-            },
-            remapping={
-                "texts": "target_object",
-            },
-        )
-        # image to real
-        smach.StateMachine.add(
-            "COORDINATE_TRANSFER",
-            smach_ros.ServiceState(
-                "image_to_real",
-                CoordinateTransfer,
-                request_slots=["image_x", "image_y"],
-                response_slots=["real_x", "real_y"],
-            ),
-            transitions={"succeeded": "PLAN_ACTION_TARGETS"},
-        )
-        # set action target
-        # TODO one state per action? maybe in sub-statemachine?
-        smach.StateMachine.add(
-            "PLAN_ACTION_TARGETS",
-            ActionTrajectory(),
-            transitions={
-                "succeeded": "SOLVE_IK",
-                "unknown_action": "SPEECH_ASR",
-            },
-            remapping={
-                "target_x": "real_x",
-                "target_y": "real_y",
-                "target_z": "table_z",
+                "succeeded": "LLM_RESPONSE_ITERATOR",
             },
         )
 
-        # callback to post-process detected objects
-        def ik_response_callback(userdata, response):
-            if userdata.planning_group == "l_arm":
-                return "move_left_arm"
-            elif userdata.planning_group == "r_arm":
-                return "move_right_arm"
-            rospy.logerr(f"Unknown planning group {userdata.planning_group}")
-            return "aborted"
+        # iterate through llm response actions
+        llm_response_it = smach.Iterator(
+            outcomes=["succeeded", "preempted", "aborted", "system_out", "quit"],
+            input_keys=[
+                "motion_init_pose",
+                "motion_look_down_names",
+                "motion_look_down_positions",
+                "llm_input",
+                "llm_actions",
+                "table_z",
+                "tts_language",
+                "tts_pitch",
+                "tts_speed",
+                "tts_blocking",
+                "system_message",
+            ],
+            it=lambda: range(0, len(sm.userdata.llm_actions)),
+            output_keys=["system_message"],
+            it_label="action_index",
+            exhausted_outcome="succeeded",
+        )
+        with llm_response_it:
+            execute_actions_sm = smach.StateMachine(
+                outcomes=[
+                    "succeeded",
+                    "preempted",
+                    "aborted",
+                    "next_action",
+                    "system_out",
+                    "quit",
+                ],
+                input_keys=[
+                    "action_index",
+                    "motion_init_pose",
+                    "motion_look_down_names",
+                    "motion_look_down_positions",
+                    "llm_input",
+                    "llm_actions",
+                    "table_z",
+                    "tts_language",
+                    "tts_pitch",
+                    "tts_speed",
+                    "tts_blocking",
+                    "system_message",
+                ],
+                output_keys=["system_message"],
+            )
+            with execute_actions_sm:
 
-        # IK Solver
-        # TODO make batched or also put inside iterator (see below)
-        smach.StateMachine.add(
-            "SOLVE_IK",
-            smach_ros.ServiceState(
-                "inverse_kinematics",
-                InverseKinematics,
-                input_keys=["planning_group"],
-                request_slots=["planning_group", "pose"],
-                response_slots=["joint_name", "position"],
-                response_cb=ik_response_callback,
-                outcomes=["move_left_arm", "move_right_arm"],
-            ),
-            transitions={
-                "move_left_arm": "MOVE_LEFT_ARM",
-                "move_right_arm": "MOVE_RIGHT_ARM",
-            },
-            remapping={
-                "joint_name": "action_joints",
-                "position": "action_positions",
-            },
-        )
-        # execute movement
-        # TODO move into multi-point iterator state
-        # TODO potentially combine with initial pose
-        smach.StateMachine.add(
-            "MOVE_LEFT_ARM",
-            MoveRobotPart(MOTION_SRV_LEFT, MOTION_SUB_LEFT),
-            remapping={"names": "action_joints", "positions": "action_positions"},
-            transitions={"succeeded": "INITIAL_ROBOT_POSE"},
-        )
-        smach.StateMachine.add(
-            "MOVE_RIGHT_ARM",
-            MoveRobotPart(MOTION_SRV_RIGHT, MOTION_SUB_RIGHT),
-            remapping={"names": "action_joints", "positions": "action_positions"},
-            transitions={"succeeded": "INITIAL_ROBOT_POSE"},
-        )
+                # parse next action
+                smach.StateMachine.add(
+                    "ACTION_PARSER",
+                    ActionParser(),
+                    transitions={
+                        "speak": "TEXT_TO_SPEECH",
+                        "act": "LOOK_DOWN_ACT",
+                        "describe": "LOOK_DOWN_DESCRIBE",  # "LLM_SCENE_DESCRIPTION",
+                        "quit": "quit",
+                        "initial_pose": "JOINT_TRAJECTORY_ITERATOR",
+                    },
+                )
 
+                # SPEAK ACTION
+                smach.StateMachine.add(
+                    "TEXT_TO_SPEECH",
+                    smach_ros.ServiceState(
+                        "nico/text_to_speech/say",
+                        SayText,
+                        request_slots=[
+                            "text",
+                            "language",
+                            "pitch",
+                            "speed",
+                            "blocking",
+                        ],
+                        # response_slots=["duration"],
+                    ),
+                    remapping={
+                        "text": "tts_text",
+                        "language": "tts_language",
+                        "pitch": "tts_pitch",
+                        "speed": "tts_speed",
+                        "blocking": "tts_blocking",
+                    },
+                    transitions={"succeeded": "next_action"},
+                )
+
+                # DESCRIBE ACTION
+                smach.StateMachine.add(
+                    "LOOK_DOWN_DESCRIBE",
+                    MoveRobotPart(MOTION_SRV_HEAD, MOTION_SUB_HEAD),
+                    remapping={
+                        "names": "motion_look_down_names",
+                        "positions": "motion_look_down_positions",
+                    },
+                    transitions={"succeeded": "LLM_SCENE_DESCRIPTION"},
+                )
+
+                def llm_scene_description_callback(userdata, response):
+                    rospy.loginfo(f"SYSTEM: {response.response}")
+                    userdata.system_message = f"SYSTEM: {response.response}"
+                    return "succeeded"
+
+                smach.StateMachine.add(
+                    "LLM_SCENE_DESCRIPTION",
+                    smach_ros.ServiceState(
+                        "llm_vision_description",
+                        PromptTextLLM,
+                        request_slots=["prompt"],
+                        response_slots=["response"],
+                        response_cb=llm_scene_description_callback,
+                        output_keys=["system_message"],
+                    ),
+                    remapping={"prompt": "llm_input", "response": "tts_text"},
+                    transitions={
+                        "succeeded": "system_out",
+                    },
+                )
+
+                # ACT ACTION
+                smach.StateMachine.add(
+                    "LOOK_DOWN_ACT",
+                    MoveRobotPart(MOTION_SRV_HEAD, MOTION_SUB_HEAD),
+                    remapping={
+                        "names": "motion_look_down_names",
+                        "positions": "motion_look_down_positions",
+                    },
+                    transitions={"succeeded": "PLAN_ACTION_TRAJECTORY"},
+                )
+                # plan action and verify if object is actually on the table
+                smach.StateMachine.add(
+                    "PLAN_ACTION_TRAJECTORY",
+                    ConcurrentPlanAndVerify(),
+                    {
+                        "succeeded": "JOINT_TRAJECTORY_ITERATOR",
+                        "system_out": "system_out",
+                    },
+                )
+                # execute movement # TODO movement seperately/concurrently?
+                smach.StateMachine.add(
+                    "JOINT_TRAJECTORY_ITERATOR",
+                    JointTrajectoryIterator(
+                        MOTION_SRV_HEAD,
+                        MOTION_SUB_HEAD,
+                        MOTION_SRV_LEFT,
+                        MOTION_SUB_LEFT,
+                        MOTION_SRV_RIGHT,
+                        MOTION_SUB_RIGHT,
+                    ),
+                    {"succeeded": "next_action"},
+                )
+                # FIXME only for action experiment
+                # check action success
+                # smach.StateMachine.add(
+                #     "PUSH_VERIFICATION",
+                #     PushActionSuccess(),
+                #     {"succeeded": "next_action"},
+                #     remapping={
+                #         "target_origin_x": "real_x",
+                #         "target_origin_y": "real_y",
+                #     },
+                # )
+
+            # close execute_actions_sm
+            smach.Iterator.set_contained_state(
+                "EXECUTE_ACTIONS", execute_actions_sm, loop_outcomes=["next_action"]
+            )
+        # close the llm_response_it
+        smach.StateMachine.add(
+            "LLM_RESPONSE_ITERATOR",
+            llm_response_it,
+            {
+                "succeeded": "SPEECH_ASR",
+                "aborted": "aborted",
+                "system_out": "LLM_SPEECH_PROCESSOR",
+                "quit": "succeeded",
+            },
+            remapping={"system_message": "llm_input"},
+        )
     # Create and start the introspection server for visualization
     sis = smach_ros.IntrospectionServer("nico_demo_introspection", sm, "/NICO_DEMO")
     sis.start()
     # Execute state machine
-    outcome = sm.execute()
+    sm.execute()
     sis.stop()
 
 
