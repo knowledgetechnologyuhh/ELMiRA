@@ -7,9 +7,15 @@ This is the repository for the NICO demo.
 
 1. Install `NICO-software` and place this repository inside `NICO-software/api/src`
 
-2. Install required python packages (TODO)
+2. Download [open_manipulator_msgs](https://github.com/ROBOTIS-GIT/open_manipulator_msgs) and place it inside `NICO-software/api/src`
 
-3. Rebuild the catkin environment:
+3. Install required python packages:
+
+    ```bash
+    pip install -r nico-demo/requirements.txt
+    ```
+
+4. Rebuild the catkin environment:
 
     ```bash
     cd .. # NICO-software/api

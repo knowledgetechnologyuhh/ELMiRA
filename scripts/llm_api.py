@@ -22,7 +22,9 @@ class GPT4Server:
         self.bridge = cv_bridge.CvBridge()
 
         self.client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
-        self.assistant = self.create_assistant()
+        self.assistant = (
+            self.create_assistant()
+        )  # FIXME reuse previous id? delete after use? reset context?
         self.thread = self.client.beta.threads.create()
         rospy.Service("llm_chat", PromptTextLLM, self.text_prompt_request_handler)
         rospy.Service(
@@ -39,15 +41,7 @@ class GPT4Server:
     def create_assistant(self):
         assistant = self.client.beta.assistants.create(
             name="NICO",
-            # instructions="Imagine that you're a child-size humanoid robot, named NICO, that is supposed to interact with a human user. "
-            # + "Your task is to manipulate objects placed on a table at which you are seated, as well as communicating with the human. "
-            # + "You need to know when to manipulate objects and when to produce verbal utterances based on the user input. "
-            # + "When instructed by the user to interact with objects on the table, you should output the 'act' signal instead of any other casual LLM outputs, triggering the IK solver to produce actions. "
-            # + "Following that, you will also be asked with a template regarding the action types and target objects described in the given user instruction. "
-            # + "These will be provided to the appropriate modules (the action type will be provided to the IK solver, while the target object will be passed to the open-vocabulary object detection module). "
-            # + "In contrast, when the user chats with you on a casual topic, you should output your casual outputs like you normally do as an LLM, and not forget to output the 'speak' flag at the beginning of the sentence to trigger the text-to-speech module to output verbal outputs. "
-            # + "Get ready, we will begin.",
-            instructions="You are a child-size humanoid robot, named NICO, that interacts with a human user who is sitting across the table from you. "
+            instructions="You are a child-size humanoid robot, named NICO, that interacts with a human user. "
             + "Your task is to manipulate objects placed on a table at which you are seated, as well as communicating with the human. "
             + "You will either receive a 'USER:' query with a transcription of the user's verbal input or a 'SYSTEM:' query whenever one of your systems returns feedback or status messages."
             + "You need to respond with a list of actions to trigger your different systems to interact with the user. "
@@ -63,8 +57,8 @@ class GPT4Server:
             + "'- action: speak\n  text: Sure, I can do that for you.\n- action: act\n  object: banana\n  type: touch\n', "
             + "'- action: describe\n' or "
             + "'- action: speak\n  text: Goodbye! I hope we see each other again.\n- action: quit\n'.",
-            tools=[{"type": "retrieval"}],
-            model="gpt-4-turbo-preview",  # FIXME Remove sitting across the table after recording
+            tools=[],  # TODO: use function calling?
+            model="gpt-4-turbo-preview",  # TODO: use gpt-4o, add image directly
         )
         return assistant
 

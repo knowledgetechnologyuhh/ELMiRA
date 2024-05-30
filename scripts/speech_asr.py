@@ -32,7 +32,6 @@ import whisper
 import whisper.tokenizer
 import nico_demo.msg
 from multi_action_server import MultiActionServer, ActionInfo
-from speech_asr_client import StopReason
 
 # Constants
 BEEP_FREQ_START = 698.46  # F5 note
@@ -40,6 +39,14 @@ BEEP_FREQ_STOP = 587.33   # D5 note
 BEEP_SAMPLE_RATE = 44100
 BEEP_DURATION = 0.100
 BEEP_VOLUME = 0.08
+
+# Stop reason enumeration
+class StopReason(Enum):
+	UNKNOWN = nico_demo.msg.PerformASRResult.STOP_UNKNOWN
+	TIMEOUT = nico_demo.msg.PerformASRResult.STOP_TIMEOUT
+	DETECTED = nico_demo.msg.PerformASRResult.STOP_DETECTED
+	DURATION = nico_demo.msg.PerformASRResult.STOP_DURATION
+	REQUEST = nico_demo.msg.PerformASRResult.STOP_REQUEST
 
 # Main function
 def main():
