@@ -23,8 +23,8 @@ class ActionParser(smach.State):
         next_action = userdata.llm_actions[userdata.action_index]
         rospy.loginfo(f"Action: {next_action['action']}")
         userdata.action = next_action["action"]
-        with open("experiment_log.txt", "a") as f:
-            print(f"Action: {next_action['action']}", file=f)
+        # with open("experiment_log.txt", "a") as f:
+        #     print(f"Action: {next_action['action']}", file=f)
         if next_action["action"] == "speak":
             rospy.loginfo(f"Text: {next_action['text']}")
             userdata.tts_text = next_action["text"]

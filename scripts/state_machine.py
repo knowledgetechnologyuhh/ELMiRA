@@ -9,8 +9,9 @@ from actionlib_msgs.msg import GoalStatus
 from nico_demo.msg import PerformASRAction
 from nico_demo.srv import PromptTextLLM
 from nicomsg.srv import SayText
+from nicomsg.msg import empty
 
-from states.move_robot import JointTrajectoryIterator, MoveRobotPart
+from states.move_robot import JointTrajectoryIterator, MoveRobotPart, MoveRobot
 from states.action_planner import ConcurrentPlanAndVerify  # , PushActionSuccess
 from states.action_parser import ActionParser
 
@@ -71,6 +72,24 @@ def main():
             "positions": [0.0, 0.0],  # [0.0, 0.8203],
         },
     }
+    sm.userdata.motion_safe_names_left = [
+        "l_shoulder_z",
+        "l_shoulder_y",
+        "l_arm_x",
+        "l_elbow_y",
+        "l_wrist_z",
+        "l_wrist_x",
+    ]
+    sm.userdata.motion_safe_pose_left = [0.157, 0.0, 0.8203, 1.57, 1.39, 0.0]
+    sm.userdata.motion_safe_names_right = [
+        "r_shoulder_z",
+        "r_shoulder_y",
+        "r_arm_x",
+        "r_elbow_y",
+        "r_wrist_z",
+        "r_wrist_x",
+    ]
+    sm.userdata.motion_safe_pose_right = [-0.157, 0.0, -0.8203, -1.57, -1.39, 0.0]
     sm.userdata.motion_look_down_names = ["head_z", "head_y"]
     sm.userdata.motion_look_down_positions = [0.0, 0.8203]
     sm.userdata.table_z = 0.68
@@ -86,8 +105,8 @@ def main():
         @smach.cb_interface(output_keys=["llm_actions"], outcomes=["initial_pose"])
         def initial_pose_callback(userdata):
             userdata.llm_actions = [{"action": "initial_pose"}]
-            with open("experiment_log.txt", "a") as f:
-                print("######## EXPERIMENT START ########", file=f)
+            # with open("experiment_log.txt", "a") as f:
+            #     print("######## EXPERIMENT START ########", file=f)
             return "initial_pose"
 
         smach.StateMachine.add(
@@ -104,8 +123,8 @@ def main():
                     return "empty"
                 else:
                     rospy.loginfo(f"USER: {result.text}")
-                    with open("experiment_log.txt", "a") as f:
-                        print(f"USER: {result.text}", file=f)
+                    # with open("experiment_log.txt", "a") as f:
+                    #     print(f"USER: {result.text}", file=f)
                     userdata.llm_input = f"USER: {result.text}"
                     return "succeeded"
 
@@ -336,10 +355,52 @@ def main():
                 "succeeded": "SPEECH_ASR",
                 "aborted": "aborted",
                 "system_out": "LLM_SPEECH_PROCESSOR",
-                "quit": "succeeded",
+                "quit": "MOVE_TO_SHUTDOWN_POSITION",
             },
             remapping={"system_message": "llm_input"},
         )
+        # move robot to safe position and shut down
+        smach.StateMachine.add(
+            "MOVE_TO_SHUTDOWN_POSITION",
+            MoveRobot(
+                MOTION_SRV_HEAD,
+                MOTION_SUB_HEAD,
+                MOTION_SRV_LEFT,
+                MOTION_SUB_LEFT,
+                MOTION_SRV_RIGHT,
+                MOTION_SUB_RIGHT,
+            ),
+            {"movement_done": "DISABLE_TORQUE"},
+            remapping={
+                "names_head": "motion_look_down_names",
+                "positions_head": "motion_look_down_positions",
+                "names_left": "motion_safe_names_left",
+                "positions_left": "motion_safe_pose_left",
+                "names_right": "motion_safe_names_right",
+                "positions_right": "motion_safe_pose_right",
+            },
+        )
+
+        # disable torque
+        @smach.cb_interface(outcomes=["quit"])
+        def shutdown_callback(userdata):
+            pub = rospy.Publisher("/nico/motion/disableTorqueAll", empty, queue_size=1)
+            # wait until subscribers are connected to publish
+            rate = rospy.Rate(10)
+            while not rospy.is_shutdown():
+                connections = pub.get_num_connections()
+                if connections > 0:
+                    pub.publish(empty())
+                    break
+                rate.sleep()
+            return "quit"
+
+        smach.StateMachine.add(
+            "DISABLE_TORQUE",
+            smach.CBState(shutdown_callback),
+            {"quit": "succeeded"},
+        )
+
     # Create and start the introspection server for visualization
     sis = smach_ros.IntrospectionServer("nico_demo_introspection", sm, "/NICO_DEMO")
     sis.start()

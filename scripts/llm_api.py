@@ -39,9 +39,9 @@ class GPT4Server:
         rospy.spin()
 
     def create_assistant(self):
-        assistant = self.client.beta.assistants.create(
-            name="NICO",
-            instructions="You are a child-size humanoid robot, named NICO, that interacts with a human user. "
+        name = "NICO"
+        instructions = (
+            "You are a child-size humanoid robot, named NICO, that interacts with a human user. "
             + "Your task is to manipulate objects placed on a table at which you are seated, as well as communicating with the human. "
             + "You will either receive a 'USER:' query with a transcription of the user's verbal input or a 'SYSTEM:' query whenever one of your systems returns feedback or status messages."
             + "You need to respond with a list of actions to trigger your different systems to interact with the user. "
@@ -56,15 +56,40 @@ class GPT4Server:
             + "Please always output your response as a valid, single line yaml without ```yaml annotation that can be directly read by python, for example "
             + "'- action: speak\n  text: Sure, I can do that for you.\n- action: act\n  object: banana\n  type: touch\n', "
             + "'- action: describe\n' or "
-            + "'- action: speak\n  text: Goodbye! I hope we see each other again.\n- action: quit\n'.",
-            tools=[],  # TODO: use function calling?
-            model="gpt-4-turbo-preview",  # TODO: use gpt-4o, add image directly
+            + "'- action: speak\n  text: Goodbye! I hope we see each other again.\n- action: quit\n'."
         )
+        tools = []  # TODO: use function calling?
+        model = (
+            "gpt-4o"  # "gpt-4-turbo-preview",  # TODO: use gpt-4o, add image directly
+        )
+
+        assistant_file = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), ".assistant_id"
+        )
+        if os.path.isfile(assistant_file):
+            with open(assistant_file, "r") as f:
+                assistant_id = f.readline()
+            assistant = self.client.beta.assistants.update(
+                assistant_id,
+                name=name,
+                instructions=instructions,
+                tools=tools,
+                model=model,
+            )
+        else:
+            assistant = self.client.beta.assistants.create(
+                name=name,
+                instructions=instructions,
+                tools=tools,
+                model=model,
+            )
+            with open(assistant_file, "w") as f:
+                f.write(assistant.id)
         return assistant
 
     def create_vision_object_exists(self, prompt, base64_image):
         response = self.client.chat.completions.create(
-            model="gpt-4-vision-preview",
+            model="gpt-4o",  # "gpt-4-vision-preview",
             messages=[
                 {
                     "role": "system",
@@ -92,7 +117,7 @@ class GPT4Server:
 
     def create_vision_scene_description(self, prompt, base64_image):
         response = self.client.chat.completions.create(
-            model="gpt-4-vision-preview",
+            model="gpt-4o",  # "gpt-4-vision-preview",
             messages=[
                 {
                     "role": "system",
