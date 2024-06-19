@@ -182,7 +182,14 @@ def main():
 
         # iterate through llm response actions
         llm_response_it = smach.Iterator(
-            outcomes=["succeeded", "preempted", "aborted", "system_out", "quit"],
+            outcomes=[
+                "succeeded",
+                "preempted",
+                "aborted",
+                "update_actions",
+                "system_out",
+                "quit",
+            ],
             input_keys=[
                 "motion_init_pose",
                 "motion_look_down_names",
@@ -197,7 +204,7 @@ def main():
                 "system_message",
             ],
             it=lambda: range(0, len(sm.userdata.llm_actions)),
-            output_keys=["system_message"],
+            output_keys=["llm_actions", "system_message"],
             it_label="action_index",
             exhausted_outcome="succeeded",
         )
@@ -208,6 +215,7 @@ def main():
                     "preempted",
                     "aborted",
                     "next_action",
+                    "update_actions",
                     "system_out",
                     "quit",
                 ],
@@ -225,7 +233,7 @@ def main():
                     "tts_blocking",
                     "system_message",
                 ],
-                output_keys=["system_message"],
+                output_keys=["llm_actions", "system_message"],
             )
             with execute_actions_sm:
 
@@ -279,8 +287,8 @@ def main():
                 )
 
                 def llm_scene_description_callback(userdata, response):
-                    rospy.loginfo(f"SYSTEM: {response.response}")
-                    userdata.system_message = f"SYSTEM: {response.response}"
+                    rospy.loginfo(f"LLM output:\n{response.response}")
+                    userdata.llm_actions = yaml.safe_load(response.response)
                     return "succeeded"
 
                 smach.StateMachine.add(
@@ -289,13 +297,14 @@ def main():
                         "llm_vision_description",
                         PromptTextLLM,
                         request_slots=["prompt"],
-                        response_slots=["response"],
                         response_cb=llm_scene_description_callback,
-                        output_keys=["system_message"],
+                        output_keys=["llm_actions"],
                     ),
-                    remapping={"prompt": "llm_input", "response": "tts_text"},
+                    remapping={
+                        "prompt": "llm_input",
+                    },
                     transitions={
-                        "succeeded": "system_out",
+                        "succeeded": "update_actions",
                     },
                 )
 
@@ -354,6 +363,7 @@ def main():
             {
                 "succeeded": "SPEECH_ASR",
                 "aborted": "aborted",
+                "update_actions": "LLM_RESPONSE_ITERATOR",
                 "system_out": "LLM_SPEECH_PROCESSOR",
                 "quit": "MOVE_TO_SHUTDOWN_POSITION",
             },
