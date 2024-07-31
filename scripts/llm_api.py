@@ -119,36 +119,8 @@ class GPT4Server:
         )
         return response
 
-    def create_vision_scene_description(self, prompt, base64_image):
-        response = self.client.chat.completions.create(
-            model="gpt-4o",  # "gpt-4-vision-preview",
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are a visual description system of a child-size humanoid robot, named NICO, that communicates with a human user and needs to manipulate objects placed on the table in front of it. "
-                    + "Based on the given image and user prompt, can you describe the scene? Answer in a short, concise manner that the main chat system of NICO can use to formulate its response.",
-                },
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": prompt},
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": f"data:image/jpeg;base64,{base64_image}"
-                            },
-                        },
-                    ],
-                },
-            ],
-            max_tokens=200,
-            temperature=0.8,
-            n=1,
-        )
-        return response
-
     def text_prompt_request_handler(self, request):
-        message = self.client.beta.threads.messages.create(
+        self.client.beta.threads.messages.create(
             thread_id=self.thread.id, role="user", content=request.prompt
         )
         # client.beta.threads.messages.list(thread_id=thread.id).data
@@ -223,7 +195,6 @@ class GPT4Server:
             rospy.logerr(run.status)
 
     def vision_prompt_request_handler(self, request):
-        rospy.loginfo("Hello?")
         img_msg = rospy.wait_for_message(
             "/nico/vision/right",
             sensor_msgs.msg.Image,
@@ -238,31 +209,10 @@ class GPT4Server:
         response = self.create_vision_object_exists(request.prompt, base64_image)
         response = yaml.safe_load(response.choices[0].message.content.strip())
         if response["object_visible"]:
-            rospy.loginfo("Yes")
             return True, ""
         else:
-            rospy.loginfo("No")
             return False, f"SYSTEM: {response['system_message']}"
 
-    def vision_description_request_handler(self, request):
-        img_msg = rospy.wait_for_message(
-            "/nico/vision/right",
-            sensor_msgs.msg.Image,
-        )
-        cv_image = self.bridge.imgmsg_to_cv2(img_msg, "bgr8")
-        cv_image = cv2.resize(cv_image, None, fx=0.5, fy=0.5)
-
-        # Getting the base64 string
-        _, buffer = cv2.imencode(".png", cv_image)
-        base64_image = base64.b64encode(buffer).decode("utf-8")
-
-        response = self.create_vision_scene_description(request.prompt, base64_image)
-        return response.choices[0].message.content.strip()
-
-
-#
-# Run
-#
 
 # Run main function
 if __name__ == "__main__":
