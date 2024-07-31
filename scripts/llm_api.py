@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import json
 import os
 import openai
 from openai import OpenAI
@@ -8,8 +9,6 @@ import cv2
 import cv_bridge
 import rospy
 import sensor_msgs.msg
-import yaml
-import re
 from io import BytesIO, BufferedReader
 
 from nico_demo.srv import PromptTextLLM, PromptVisionLLM
@@ -26,6 +25,7 @@ class GPT4Server:
         self.assistant = self.create_assistant()  # FIXME reset context?
         self.thread = self.client.beta.threads.create()
         self.files = []
+        # TODO rename topic and messages and potentially merge chat and description?
         rospy.Service("llm_chat", PromptTextLLM, self.text_prompt_request_handler)
         rospy.Service(
             "llm_vision_check", PromptVisionLLM, self.vision_prompt_request_handler
@@ -50,22 +50,22 @@ class GPT4Server:
             + "You need to respond with a list of actions to trigger your different systems to interact with the user. "
             + "These actions will be processed and fully executed in sequence, before the user is prompted for input again or the interaction ends. "
             + "Speak: In order to verbally respond to the user, you should add a 'speak' action to the list of actions with an additional 'text' field. The text will be used to produce speech with your TTS module. "
-            # + "Describe: Whenever you need visual information to respond to a user query about your surroundings or objects on the table, you need to actively request it by adding a 'describe' action to the list of actions. This will trigger an image captioning module to output the scene description, which you'll then receive as a 'SYSTEM:' query. "
             + "Describe: Whenever you need visual information to respond to a user query about your surroundings or objects on the table, you need to actively request it by adding a 'describe' action to the list of actions. This lets you look at the table and take an image with the right eye camera which you will receive as input. "
             + "Act: When instructed by the user to interact with objects on the table, you have to add the 'act' action, triggering your object detection and IK solver to produce physical actions with the left or right arm. "
             + "You need to add a key for the 'type' of action and the target 'object' specified by the user for your systems to know which action to choose. "
             + "Valid types are: 'touch' to touch the object with your hand, 'push' to move ithe object forward, 'push_left' to move it to the left, 'push_right' to move it to the right and 'show' to point towards it. "
             + "Quit: To end the interaction entirely, you should output the 'quit' signal with no additional parameters. "
             + "Try to be responsive and transparent to the user by adding 'speak' actions before or after executing other actions where appropriate. "
-            + "Please always output your response as a valid, single line yaml without ```yaml annotation that can be directly read by python, for example "
-            + "'- action: speak\n  text: Sure, I can do that for you.\n- action: act\n  object: banana\n  type: touch\n', "
-            + "'- action: describe\n' or "
-            + "'- action: speak\n  text: Goodbye! I hope we see each other again.\n- action: quit\n'."
+            + "Please always output your response as a valid, single line json containing the list of actions, for example "
+            + "`{'actions': [{'action': 'speak', 'text': 'Sure, I can do that for you.'}, {'action': 'act', 'object': 'banana', 'type': 'touch'}]}`, "
+            + "`{'actions': [[{'action': 'describe'}]}` or "
+            + "`{'actions': [[{'action': 'speak', 'text': 'Goodbye! I hope we see each other again.'}, {'action': 'quit'}]}`."
         )
         tools = []  # TODO: use function calling?
         model = (
             "gpt-4o"  # "gpt-4-turbo-preview",  # TODO: use gpt-4o, add image directly
         )
+        response_format = {"type": "json_object"}
 
         assistant_file = os.path.join(
             os.path.dirname(os.path.abspath(__file__)), ".assistant_id"
@@ -79,6 +79,7 @@ class GPT4Server:
                 instructions=instructions,
                 tools=tools,
                 model=model,
+                response_format=response_format,
             )
         else:
             assistant = self.client.beta.assistants.create(
@@ -86,6 +87,7 @@ class GPT4Server:
                 instructions=instructions,
                 tools=tools,
                 model=model,
+                response_format=response_format,
             )
             with open(assistant_file, "w") as f:
                 f.write(assistant.id)
@@ -98,7 +100,7 @@ class GPT4Server:
                 {
                     "role": "system",
                     "content": "You are a visual verification system of a child-size humanoid robot, named NICO, that is tasked by a human user to manipulate objects placed on the table in front of it. "
-                    + "Based on the given image, is the target object in the given user prompt visible on the table? If yes, output 'object_visible: True\n'. If not, output 'object_visible: False\n' and add a short, concise 'system_message: ' which the main chat system of the robot can use to formulate its response to the user.",
+                    + "Based on the given image, is the target object in the given user prompt visible on the table? If yes, output `{'object_visible': true}` as json. If not, output `{'object_visible': false}` and add a short, concise `'system_message':` which the main chat system of the robot can use to formulate its response to the user.",
                 },
                 {
                     "role": "user",
@@ -116,6 +118,7 @@ class GPT4Server:
             max_tokens=100,
             temperature=0.8,
             n=1,
+            response_format={"type": "json_object"},
         )
         return response
 
@@ -136,14 +139,8 @@ class GPT4Server:
 
         if run.status == "completed":
             messages = self.client.beta.threads.messages.list(thread_id=self.thread.id)
-            yaml_string = messages.data[0].content[0].text.value
-            # add quotes around text fields to escape colons and double all quotes inbetween
-            yaml_string = re.sub(
-                r"((?:text:\s)|(?:(?<=text: )|')(?:(?!\n-|\n\Z)[^'])*)",
-                r"\1'",
-                yaml_string,
-            )
-            return yaml_string
+            json_string = messages.data[0].content[0].text.value
+            return json_string
         else:
             rospy.logerr(run.status)
 
@@ -183,14 +180,8 @@ class GPT4Server:
         # return llm response
         if run.status == "completed":
             messages = self.client.beta.threads.messages.list(thread_id=self.thread.id)
-            yaml_string = messages.data[0].content[0].text.value
-            # add quotes around text fields to escape colons and double all quotes inbetween
-            yaml_string = re.sub(
-                r"((?:text:\s)|(?:(?<=text: )|')(?:(?!\n-|\n\Z)[^'])*)",
-                r"\1'",
-                yaml_string,
-            )
-            return yaml_string
+            json_string = messages.data[0].content[0].text.value
+            return json_string
         else:
             rospy.logerr(run.status)
 
@@ -207,7 +198,7 @@ class GPT4Server:
         base64_image = base64.b64encode(buffer).decode("utf-8")
 
         response = self.create_vision_object_exists(request.prompt, base64_image)
-        response = yaml.safe_load(response.choices[0].message.content.strip())
+        response = json.loads(response.choices[0].message.content.strip())
         if response["object_visible"]:
             return True, ""
         else:

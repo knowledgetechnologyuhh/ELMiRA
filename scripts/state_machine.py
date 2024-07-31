@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
+import json
 import rospy
 import smach
 import smach_ros
-import yaml
 
 from actionlib_msgs.msg import GoalStatus
 from nico_demo.msg import PerformASRAction
@@ -162,7 +162,7 @@ def main():
         # callback to post-process detected objects
         def llm_response_callback(userdata, response):
             rospy.loginfo(f"LLM output:\n{response.response}")
-            userdata.llm_actions = yaml.safe_load(response.response)
+            userdata.llm_actions = json.loads(response.response)["actions"]
             return "succeeded"
 
         smach.StateMachine.add(
@@ -288,7 +288,7 @@ def main():
 
                 def llm_scene_description_callback(userdata, response):
                     rospy.loginfo(f"LLM output:\n{response.response}")
-                    userdata.llm_actions = yaml.safe_load(response.response)
+                    userdata.llm_actions = json.loads(response.response)["actions"]
                     return "succeeded"
 
                 smach.StateMachine.add(
