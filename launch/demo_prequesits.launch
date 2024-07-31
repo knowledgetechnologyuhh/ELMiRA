@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<launch>
+    <node name="speech_asr" pkg="nico_demo" type="speech_asr.py" required="true"  output="screen"/> 
+    <node name="object_localiser" pkg="nico_demo" type="object_localiser.py" required="true"  output="screen"/> 
+    <node name="coordinate_transfer" pkg="nico_demo" type="coordinate_transfer.py" required="true"  output="screen"/> 
+    <node name="ik_solver" pkg="nico_demo" type="ik_solver.py" required="true"  output="screen"/> 
+    <node name="text_to_speech" pkg="nicoros" type="TextToSpeech.py" required="true"  output="screen"/>
+</launch>
