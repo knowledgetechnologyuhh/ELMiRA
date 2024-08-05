@@ -11,7 +11,7 @@ import rospy
 import sensor_msgs.msg
 from io import BytesIO, BufferedReader
 
-from nico_demo.srv import PromptTextLLM, PromptVisionLLM
+from nico_demo.srv import PromptTextLLM, PromptVisionLLM, CheckLLMObjectVisibility
 
 
 class GPT4Server:
@@ -25,15 +25,17 @@ class GPT4Server:
         self.assistant = self.create_assistant()  # FIXME reset context?
         self.thread = self.client.beta.threads.create()
         self.files = []
-        # TODO rename topic and messages and potentially merge chat and description?
+        # TODO merge chat and vision?
         rospy.Service("llm_chat", PromptTextLLM, self.text_prompt_request_handler)
         rospy.Service(
-            "llm_vision_check", PromptVisionLLM, self.vision_prompt_request_handler
+            "llm_object_visibility",
+            CheckLLMObjectVisibility,
+            self.visibility_request_handler,
         )
         rospy.Service(
-            "llm_vision_description",
-            PromptTextLLM,
-            self.vision_prompt_request_handler_new,
+            "llm_vision",
+            PromptVisionLLM,
+            self.vision_prompt_request_handler,
         )
         rospy.loginfo("GPT4 started successfully")
         rospy.spin()
@@ -144,7 +146,7 @@ class GPT4Server:
         else:
             rospy.logerr(run.status)
 
-    def vision_prompt_request_handler_new(self, request):
+    def vision_prompt_request_handler(self, request):
         img_msg = rospy.wait_for_message(
             "/nico/vision/right",
             sensor_msgs.msg.Image,
@@ -185,7 +187,7 @@ class GPT4Server:
         else:
             rospy.logerr(run.status)
 
-    def vision_prompt_request_handler(self, request):
+    def visibility_request_handler(self, request):
         img_msg = rospy.wait_for_message(
             "/nico/vision/right",
             sensor_msgs.msg.Image,

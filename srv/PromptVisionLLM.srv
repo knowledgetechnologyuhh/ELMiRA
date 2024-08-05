@@ -1,4 +1,3 @@
-string prompt
+# TODO add image or topic as message field?
 ---
-bool object_visible
-string system_message
+string response

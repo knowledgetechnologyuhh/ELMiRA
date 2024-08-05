@@ -68,6 +68,7 @@ add_service_files(
     InverseKinematics.srv
     PromptTextLLM.srv
     PromptVisionLLM.srv
+    CheckLLMObjectVisibility.srv
  )
 
 ## Generate actions in the 'action' folder

@@ -7,7 +7,7 @@ import smach_ros
 
 from actionlib_msgs.msg import GoalStatus
 from nico_demo.msg import PerformASRAction
-from nico_demo.srv import PromptTextLLM
+from nico_demo.srv import PromptTextLLM, PromptVisionLLM
 from nicomsg.srv import SayText
 from nicomsg.msg import empty
 
@@ -294,15 +294,11 @@ def main():
                 smach.StateMachine.add(
                     "LLM_SCENE_DESCRIPTION",
                     smach_ros.ServiceState(
-                        "llm_vision_description",
-                        PromptTextLLM,
-                        request_slots=["prompt"],
+                        "llm_vision",
+                        PromptVisionLLM,
                         response_cb=llm_scene_description_callback,
                         output_keys=["llm_actions"],
                     ),
-                    remapping={
-                        "prompt": "llm_input",
-                    },
                     transitions={
                         "succeeded": "update_actions",
                     },

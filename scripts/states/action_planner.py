@@ -8,7 +8,7 @@ from nico_demo.srv import (
     DetectObjects,
     CoordinateTransfer,
     InverseKinematics,
-    PromptVisionLLM,
+    CheckLLMObjectVisibility,
 )
 
 
@@ -325,8 +325,8 @@ class ConcurrentPlanAndVerify(smach.Concurrence):
             smach.Concurrence.add(
                 "CHECK_OBJECT_VISIBILITY",
                 smach_ros.ServiceState(
-                    "llm_vision_check",
-                    PromptVisionLLM,
+                    "llm_object_visibility",
+                    CheckLLMObjectVisibility,
                     request_slots=["prompt"],
                     response_slots=["system_message"],
                     response_cb=object_visible_response_cb,
