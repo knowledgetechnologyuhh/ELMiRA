@@ -10,7 +10,7 @@
 3. Install required python packages:
 
     ```bash
-    pip install -r nico-demo/requirements.txt
+    pip install -r ELMiRA/requirements.txt
     ```
 
 4. Rebuild the catkin environment:
@@ -27,7 +27,7 @@
     ```bash
     source activate.bash
     export OPENAI_API_KEY='yourkey'
-    roslaunch nico_demo init_nodes.launch
+    roslaunch elmira init_nodes.launch
     ```
 
 2. (optional) run visualization nodes
@@ -60,7 +60,7 @@
 
     ```bash
     source activate.bash
-    rosrun nico_demo state_machine.py
+    rosrun elmira state_machine.py
     ```
 
 ### Citation
