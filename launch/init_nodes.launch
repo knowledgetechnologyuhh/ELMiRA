@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<launch>
+    <include file="$(find elmira)/launch/camera.launch"/>
+    <include file="$(find nicoros)/launch/joint_controller.launch"/>
+
+    <node name="speech_asr" pkg="elmira" type="speech_asr.py" required="true"  output="screen"/> 
+    <node name="object_localiser" pkg="elmira" type="object_localiser.py" required="true"  output="screen"/> 
+    <node name="coordinate_transfer" pkg="elmira" type="coordinate_transfer.py" required="true"  output="screen"/> 
+    <node name="ik_solver" pkg="elmira" type="ik_solver.py" required="true"  output="screen"/> 
+    <node name="llm_api" pkg="elmira" type="llm_api.py" required="true"  output="screen"/>
+    <node name="text_to_speech" pkg="nicoros" type="TextToSpeech.py" required="true"  output="screen"/>
+</launch>

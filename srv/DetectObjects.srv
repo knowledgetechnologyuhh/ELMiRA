@@ -1,0 +1,3 @@
+string[] texts # list of input labels for object detector
+---
+DetectedObject[] objects

@@ -1,0 +1,5 @@
+string planning_group
+geometry_msgs/Pose[] poses
+JointPosition initial_position
+---
+JointPosition[] positions
