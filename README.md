@@ -1,11 +1,9 @@
-This is the repository for the NICO demo.
-
-### Modular Architecture
+## ELMiRA: Embodying Language Models in Robot Action
 ![alt text](NICO-demo-pipeline-comprehensive.drawio.png)
 
 ### Installation
 
-1. Install `NICO-software` and place this repository inside `NICO-software/api/src`
+1. Install [NICO-software](https://github.com/knowledgetechnologyuhh/NICO-software) and place this repository inside `NICO-software/api/src`
 
 2. Download [open_manipulator_msgs](https://github.com/ROBOTIS-GIT/open_manipulator_msgs) and place it inside `NICO-software/api/src`
 
@@ -22,65 +20,28 @@ This is the repository for the NICO demo.
     catkin_make
     ```
 
-### How to run the demo
+### How to run
 
 1. Run all required ros nodes:
 
-    #### nico camera:
     ```bash
     source activate.bash
-    roslaunch nico_demo camera.launch
-    ```
-
-    #### motion + joint controller
-    ```bash
-    source activate.bash
-    roslaunch nicoros joint_controller.launch
-    ```
-
-    #### speech asr:
-    ```bash
-    source activate.bash
-    rosrun nico_demo speech_asr.py
-    ```
-
-    #### owlv2:
-    ```bash
-    source activate.bash
-    rosrun nico_demo object_localiser.py
-    ```
-
-    #### image to real coordinate transfer:
-    ```bash
-    source activate.bash
-    rosrun nico_demo coordinate_transfer.py
-    ```
-
-    #### EvoIK:
-    ```bash
-    source activate.bash
-    rosrun nico_demo ik_solver.py
-    ```
-
-    #### text to speech:
-    ```bash
-    source activate.bash
-    rosrun nicoros TextToSpeech.py
-    ```
-
-    #### gpt 4:
-    ```bash
     export OPENAI_API_KEY='yourkey'
-    source activate.bash
-    rosrun nico_demo llm_api.py
+    roslaunch nico_demo init_nodes.launch
     ```
 
 2. (optional) run visualization nodes
 
-    #### smach image publisher:
+    #### smach viewer / image publisher
+    At the time of writing, the official smach viewer installation is broken, but the image publisher works: 
     ```bash
     source activate.bash
     rosrun smach_viewer smach_image_publisher.py
+    ```
+    alternatively, you can fix some imports locally and run:
+    ```bash
+    source activate.bash
+    rosrun smach_viewer smach_viewer.py
     ```
 
     #### rqt_image_view:
@@ -93,10 +54,43 @@ This is the repository for the NICO demo.
     - `/nico/vision/right`: raw camera image
     - `/owlv2_server/result_image`: camera image with detected bounding boxes and class labels
     - `/smach_image_publisher/image(/compressed)`: image of the state machine with the current state highlighted
+    - `/smach_viewer/image`: live image of the smach_viewer gui
 
-3. Run state machine:
+3. Run the state machine:
 
     ```bash
     source activate.bash
     rosrun nico_demo state_machine.py
     ```
+
+### Citation
+
+```bibtex
+@inproceedings{gade2024elmira,
+  author    = {G{\"a}de, Connor and {\"O}zdemir, Ozan and Weber, Cornelius and Wermter, Stefan},
+  title     = {Embodying Language Models in Robot Action},
+  booktitle = {32nd European Symposium on Artificial Neural Networks, Computational Intelligence and Machine Learning},  
+  year      = {2024},
+}
+```
+
+### License
+
+The website files located in the `/docs` directory are licensed under the Creative Commons Attribution-ShareAlike 4.0 International License. See the `/docs/README.md` for more details.
+
+The rest of this repository is licensed under the GNU General Public License v3.0:
+
+Copyright (C) 2024 Connor Gäde, Ozan Özdemir
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.

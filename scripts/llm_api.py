@@ -21,6 +21,10 @@ class GPT4Server:
 
         self.bridge = cv_bridge.CvBridge()
 
+        if "OPENAI_API_KEY" not in os.environ:
+            rospy.logerr("OPENAI_API_KEY is not set")
+            exit(1)
+
         self.client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
         self.assistant = self.create_assistant()  # FIXME reset context?
         self.thread = self.client.beta.threads.create()

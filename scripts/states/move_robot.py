@@ -184,13 +184,6 @@ class MoveRobotPart(smach.Sequence):
                         np.searchsorted(message.name, userdata.names, sorter=joint_ids)
                     ]
                 ]
-                # rospy.loginfo(
-                #     f"Position: {ordered_state}\n"
-                #     + f"Target Position: {userdata.positions}\n"
-                #     + f"Velocity: {message.velocity}\n"
-                #     + f"Position reached: {np.allclose(userdata.positions, ordered_state, atol=0.157)}\n"
-                #     + f"Velocity done: {np.all(np.array(message.velocity) == 0)}"
-                # )
                 return not (
                     np.allclose(userdata.positions, ordered_state, atol=0.052)  # < ~3°
                     and np.all(np.array(message.velocity) == 0)

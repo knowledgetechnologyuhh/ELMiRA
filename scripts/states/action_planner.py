@@ -81,7 +81,7 @@ class ActionTrajectory(smach.State):
             output_keys=[
                 "planning_group",
                 "poses",
-            ],  # TODO: change from one pose to list
+            ],
         )
 
     def execute(self, userdata):
@@ -359,106 +359,3 @@ class ConcurrentPlanAndVerify(smach.Concurrence):
             and outcome_map["CHECK_OBJECT_VISIBILITY"] == "succeeded"
         ):
             return "succeeded"
-
-
-class PushActionSuccess(smach.StateMachine):
-    def __init__(
-        self,
-    ):
-        super(PushActionSuccess, self).__init__(
-            input_keys=[
-                "action",
-                "action_type",
-                "target_object",
-                "target_origin_x",
-                "target_origin_y",
-            ],
-            output_keys=["system_message"],
-            outcomes=["succeeded", "preempted", "aborted", "system_out"],
-        )
-        # Open the container
-        with self:
-            # check if push action
-            smach.StateMachine.add(
-                "IS_PUSH_ACTION",
-                smach_ros.ConditionState(
-                    cond_cb=lambda ud: ud.action == "act" and "push" in ud.action_type,
-                    input_keys=["action", "action_type"],
-                ),
-                {"true": "OBJECT_DETECTION", "false": "succeeded"},
-            )
-            # detect object in image space
-            smach.StateMachine.add(
-                "OBJECT_DETECTION",
-                smach_ros.ServiceState(
-                    "object_detector",
-                    DetectObjects,
-                    request_slots=["texts"],
-                    response_slots=["objects"],
-                ),
-                transitions={
-                    "succeeded": "CHOOSE_TARGET_OBJECT",
-                },
-                remapping={
-                    "texts": "target_object",
-                },
-            )
-            # process dected objects
-            smach.StateMachine.add(
-                "CHOOSE_TARGET_OBJECT",
-                ObjectSelector(),
-                transitions={
-                    "succeeded": "COORDINATE_TRANSFER",
-                    "object_not_found": "system_out",  # TODO combine not found and out of reach?
-                    "object_out_of_reach": "system_out",
-                },
-            )
-            # image to real
-            smach.StateMachine.add(
-                "COORDINATE_TRANSFER",
-                smach_ros.ServiceState(
-                    "image_to_real",
-                    CoordinateTransfer,
-                    request_slots=["image_x", "image_y"],
-                    response_slots=["real_x", "real_y"],
-                ),
-                transitions={"succeeded": "DETERMINE_PUSH_DISTANCE"},
-            )
-
-            @smach.cb_interface(
-                input_keys=[
-                    "action_type",
-                    "target_origin_x",
-                    "target_origin_y",
-                    "real_x",
-                    "real_y",
-                    "target_object",
-                ],
-                output_keys=[],
-                outcomes=["succeeded"],
-            )
-            def push_distance_cb(userdata):
-                if userdata.action_type == "push":
-                    direction = "forward"
-                    push_distance = userdata.real_x - userdata.target_origin_x
-                elif userdata.action_type == "push_left":
-                    direction = "left"
-                    push_distance = userdata.real_y - userdata.target_origin_y
-                elif userdata.action_type == "push_right":
-                    direction = "right"
-                    push_distance = userdata.target_origin_y - userdata.real_y
-                rospy.loginfo(f"Object was pushed {direction} by {push_distance}m")
-                with open("action_success_log.txt", "a") as f:
-                    print(
-                        f"{userdata.target_object} was pushed {direction} by {push_distance}m",
-                        file=f,
-                    )
-                    print(f"Success: {push_distance > 0.02}", file=f)
-                    print(f"Diff: {np.abs(0.02 - push_distance)}", file=f)
-                return "succeeded"
-
-            smach.StateMachine.add(
-                "DETERMINE_PUSH_DISTANCE",
-                smach.CBState(push_distance_cb),
-                {"succeeded": "succeeded"},
-            )

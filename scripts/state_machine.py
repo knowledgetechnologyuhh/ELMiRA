@@ -12,7 +12,7 @@ from nicomsg.srv import SayText
 from nicomsg.msg import empty
 
 from states.move_robot import JointTrajectoryIterator, MoveRobotPart, MoveRobot
-from states.action_planner import ConcurrentPlanAndVerify  # , PushActionSuccess
+from states.action_planner import ConcurrentPlanAndVerify
 from states.action_parser import ActionParser
 
 
@@ -105,8 +105,6 @@ def main():
         @smach.cb_interface(output_keys=["llm_actions"], outcomes=["initial_pose"])
         def initial_pose_callback(userdata):
             userdata.llm_actions = [{"action": "initial_pose"}]
-            # with open("experiment_log.txt", "a") as f:
-            #     print("######## EXPERIMENT START ########", file=f)
             return "initial_pose"
 
         smach.StateMachine.add(
@@ -123,8 +121,6 @@ def main():
                     return "empty"
                 else:
                     rospy.loginfo(f"USER: {result.text}")
-                    # with open("experiment_log.txt", "a") as f:
-                    #     print(f"USER: {result.text}", file=f)
                     userdata.llm_input = f"USER: {result.text}"
                     return "succeeded"
 
@@ -336,17 +332,6 @@ def main():
                     ),
                     {"succeeded": "next_action"},
                 )
-                # FIXME only for action experiment
-                # check action success
-                # smach.StateMachine.add(
-                #     "PUSH_VERIFICATION",
-                #     PushActionSuccess(),
-                #     {"succeeded": "next_action"},
-                #     remapping={
-                #         "target_origin_x": "real_x",
-                #         "target_origin_y": "real_y",
-                #     },
-                # )
 
             # close execute_actions_sm
             smach.Iterator.set_contained_state(
