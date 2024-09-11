@@ -1,0 +1,5 @@
+float32 image_x # image x coordinate normalized to 0, 1 
+float32 image_y # image y coordinate normalized to 0, 1
+---
+float32 real_x # real world x (forward) in meter
+float32 real_y # real world y (from right to left) in meter

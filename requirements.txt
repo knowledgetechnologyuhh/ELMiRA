@@ -1,0 +1,4 @@
+sounddevice
+openai-whisper
+openai
+scipy>=1.6

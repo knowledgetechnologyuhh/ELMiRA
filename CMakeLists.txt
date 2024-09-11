@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(nico_demo)
+project(elmira)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
@@ -13,6 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   message_generation
   actionlib_msgs
+  geometry_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -51,15 +52,19 @@ find_package(catkin REQUIRED COMPONENTS
 ## Generate messages in the 'msg' folder
 add_message_files(
     FILES
-    SpeechStatus.msg
-    SpeechStatusArray.msg
+    DetectedObject.msg
+    JointPosition.msg
 )
 
 ## Generate services in the 'srv' folder
 add_service_files(
    FILES
-    SpeakText.srv
-    SpeakCachedText.srv
+    DetectObjects.srv
+    CoordinateTransfer.srv
+    InverseKinematics.srv
+    PromptTextLLM.srv
+    PromptVisionLLM.srv
+    CheckLLMObjectVisibility.srv
  )
 
 ## Generate actions in the 'action' folder
@@ -73,6 +78,7 @@ generate_messages(
    DEPENDENCIES
    std_msgs
    actionlib_msgs
+   geometry_msgs
 )
 
 ################################################

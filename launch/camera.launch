@@ -1,0 +1,16 @@
+<launch>
+  <arg name="mode" default="right"/>
+  <arg name="width" default="1920"/>
+  <arg name="height" default="1440"/>
+  <arg name="framerate" default="30"/>
+  <arg name="zoom" default="150"/>
+  <arg name="tilt" default="-482400"/>
+
+  <node name="nicovision" pkg="nicoros" type="Vision.py"
+    args="--mode='$(arg mode)'
+    --width='$(arg width)'
+    --height='$(arg height)'
+    --framerate='$(arg framerate)'
+    --zoom='$(arg zoom)'
+    --tilt='$(arg tilt)'"/>
+</launch>
