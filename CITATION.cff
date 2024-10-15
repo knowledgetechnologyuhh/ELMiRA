@@ -11,6 +11,7 @@ date-released: 2024-09-11
 url: "https://github.com/knowledgetechnologyuhh/ELMiRA"
 preferred-citation:
   type: conference-paper
+  title: "Embodying Language Models in Robot Action"
   authors:
   - family-names: "G{\\\"a}de"
     given-names: "Connor"
@@ -20,6 +21,10 @@ preferred-citation:
     given-names: "Cornelius"
   - family-names: "Wermter"
     given-names: "Stefan"
-  collection-title: "32nd European Symposium on Artificial Neural Networks, Computational Intelligence and Machine Learning"
-  title: "Embodying Language Models in Robot Action"
+  collection-title: "Proceedings of the 32nd European Symposium on Artificial Neural Networks, Computational Intelligence and Machine Learning (ESANN 2024)"
+  pages: "625--630"
   year: 2024
+  month: 10
+  identifiers:
+  - type: doi
+    value: 10.14428/esann/2024.es2024-143
