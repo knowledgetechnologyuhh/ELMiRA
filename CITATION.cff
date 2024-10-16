@@ -22,9 +22,9 @@ preferred-citation:
   - family-names: "Wermter"
     given-names: "Stefan"
   collection-title: "Proceedings of the 32nd European Symposium on Artificial Neural Networks, Computational Intelligence and Machine Learning (ESANN 2024)"
-  pages: "625--630"
+  start: 625
+  end: 630
   year: 2024
   month: 10
-  identifiers:
-  - type: doi
-    value: 10.14428/esann/2024.es2024-143
+  publisher: "Ciaco - i6doc.com"
+  doi: 10.14428/esann/2024.es2024-143
