@@ -65,6 +65,8 @@
 
 ### Citation
 
+@inproceedings{G_a_de_Embodying_Language_Models_2024,author = {G{\"a}de, Connor and {\"O}zdemir, Ozan and Weber, Cornelius and Wermter, Stefan},booktitle = {Proceedings of the 32nd European Symposium on Artificial Neural Networks, Computational Intelligence and Machine Learning (ESANN 2024)},doi = {10.14428/esann/2024.es2024-143},month = oct,pages = {625--630},publisher = {Ciaco - i6doc.com},title = {{Embodying Language Models in Robot Action}},year = {2024}}
+
 ```bibtex
 @InProceedings{gade2024elmira, 
         author =  {G{\"a}de, Connor and {\"O}zdemir, Ozan and Weber, Cornelius and Wermter, Stefan},  
