@@ -4,7 +4,7 @@ import smach
 import smach_ros
 
 from geometry_msgs.msg import Pose, Point, Quaternion
-from nico_demo.srv import (
+from elmira.srv import (
     DetectObjects,
     CoordinateTransfer,
     InverseKinematics,
@@ -359,3 +359,4 @@ class ConcurrentPlanAndVerify(smach.Concurrence):
             and outcome_map["CHECK_OBJECT_VISIBILITY"] == "succeeded"
         ):
             return "succeeded"
+d"

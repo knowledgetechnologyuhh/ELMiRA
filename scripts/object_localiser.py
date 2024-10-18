@@ -16,8 +16,8 @@ import cv_bridge
 import rospy
 import sensor_msgs.msg
 
-from nico_demo.msg import DetectedObject
-from nico_demo.srv import DetectObjects, DetectObjectsResponse
+from elmira.msg import DetectedObject
+from elmira.srv import DetectObjects, DetectObjectsResponse
 
 
 class OWLv2(nn.Module):
@@ -168,3 +168,4 @@ class OWLv2Server:
 
 if __name__ == "__main__":
     OWLv2Server()
+ver()

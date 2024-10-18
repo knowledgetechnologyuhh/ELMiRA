@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 from evo_ik import EvoIK
 import numpy as np
-from nico_demo.srv import InverseKinematics, InverseKinematicsResponse
-from nico_demo.msg import JointPosition
+from elmira.srv import InverseKinematics, InverseKinematicsResponse
+from elmira.msg import JointPosition
 from os.path import dirname, abspath, join, pardir
 import rospy
 import torch
@@ -70,3 +70,4 @@ class KinematicsServer:
 
 if __name__ == "__main__":
     KinematicsServer()
+ver()

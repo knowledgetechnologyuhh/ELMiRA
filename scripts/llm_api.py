@@ -11,7 +11,7 @@ import rospy
 import sensor_msgs.msg
 from io import BytesIO, BufferedReader
 
-from nico_demo.srv import PromptTextLLM, PromptVisionLLM, CheckLLMObjectVisibility
+from elmira.srv import PromptTextLLM, PromptVisionLLM, CheckLLMObjectVisibility
 
 
 class GPT4Server:
@@ -218,3 +218,4 @@ if __name__ == "__main__":
     except openai.OpenAIError as e:
         rospy.logerr(e)
 # EOF
+OF

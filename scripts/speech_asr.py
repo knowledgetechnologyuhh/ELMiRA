@@ -45,7 +45,7 @@ import rospy
 import torch
 import whisper
 import whisper.tokenizer
-import nico_demo.msg
+import elmira.msg
 from multi_action_server import MultiActionServer, ActionInfo
 
 # Constants
@@ -57,11 +57,11 @@ BEEP_VOLUME = 0.08
 
 # Stop reason enumeration
 class StopReason(Enum):
-	UNKNOWN = nico_demo.msg.PerformASRResult.STOP_UNKNOWN
-	TIMEOUT = nico_demo.msg.PerformASRResult.STOP_TIMEOUT
-	DETECTED = nico_demo.msg.PerformASRResult.STOP_DETECTED
-	DURATION = nico_demo.msg.PerformASRResult.STOP_DURATION
-	REQUEST = nico_demo.msg.PerformASRResult.STOP_REQUEST
+	UNKNOWN = elmira.msg.PerformASRResult.STOP_UNKNOWN
+	TIMEOUT = elmira.msg.PerformASRResult.STOP_TIMEOUT
+	DETECTED = elmira.msg.PerformASRResult.STOP_DETECTED
+	DURATION = elmira.msg.PerformASRResult.STOP_DURATION
+	REQUEST = elmira.msg.PerformASRResult.STOP_REQUEST
 
 # Main function
 def main():
@@ -260,7 +260,7 @@ class SpeechASR:
 		else:
 			raise ValueError(f"Unknown ASR type: {asr_type}")
 
-		self.action_server = MultiActionServer(ns='speech_asr', ActionSpec=nico_demo.msg.PerformASRAction, goal_cb=self.perform_asr_goal_callback, cancel_cb=self.perform_asr_cancel_callback)
+		self.action_server = MultiActionServer(ns='speech_asr', ActionSpec=elmira.msg.PerformASRAction, goal_cb=self.perform_asr_goal_callback, cancel_cb=self.perform_asr_cancel_callback)
 		self.action_server.start()
 
 		self.capture_thread = threading.Thread(target=self.run_capture)
@@ -289,7 +289,7 @@ class SpeechASR:
 
 	def perform_asr_goal_callback(self, action: ActionInfo):
 
-		goal: nico_demo.msg.PerformASRGoal = action.goal  # noqa
+		goal: elmira.msg.PerformASRGoal = action.goal  # noqa
 		goal.start_timeout = max(goal.start_timeout, 0.0)
 		goal.min_duration = max(goal.min_duration, 1.0)
 		goal.max_duration = max(goal.max_duration, 0.0)
@@ -381,7 +381,7 @@ class SpeechASR:
 									if state is None:
 										if self.verbose:
 											rospy.loginfo(f"{action.id}: Received new goal event")
-										goal: nico_demo.msg.PerformASRGoal = action.goal  # noqa
+										goal: elmira.msg.PerformASRGoal = action.goal  # noqa
 										min_chunks = max(math.ceil(goal.min_duration / microphone.used_chunk_time), 1)
 										max_chunks = max(math.floor(goal.max_duration / microphone.used_chunk_time), 1) if goal.max_duration > 0 else 0
 										min_period_chunks = max(math.ceil(goal.min_period / microphone.used_chunk_time), 1)
@@ -479,7 +479,7 @@ class SpeechASR:
 								for action, state in actions.items():
 
 									assert state.state != DetectorState.STOPPED  # Stopped actions should never hang around because we are done with them
-									goal: nico_demo.msg.PerformASRGoal = state.action.goal  # noqa
+									goal: elmira.msg.PerformASRGoal = state.action.goal  # noqa
 									state.chunk_id = chunk_id
 
 									if state.state == ActionState.INIT:
@@ -645,7 +645,7 @@ class SpeechASR:
 			else:
 				func = request_item.action.aborted
 				response = 'Aborted'
-			func(result=nico_demo.msg.PerformASRResult(
+			func(result=elmira.msg.PerformASRResult(
 				started=request_item.started,
 				stop_reason=request_item.stop_reason.value,
 				listened=request_item.listened_duration,
@@ -654,7 +654,7 @@ class SpeechASR:
 			), status=f"{response} ASR request {f'with {len(text)} chars of text' if text is not None else 'without text'}")
 		else:
 			response = 'Feedback'
-			request_item.action.feedback(feedback=nico_demo.msg.PerformASRFeedback(
+			request_item.action.feedback(feedback=elmira.msg.PerformASRFeedback(
 				started=request_item.started,
 				cur_listened=request_item.listened_duration,
 				cur_recorded=request_item.recorded_duration,
@@ -1164,5 +1164,8 @@ class DelayedDeleter:
 
 # Run main function
 if __name__ == "__main__":
+	main()
+# EOF
+name__ == "__main__":
 	main()
 # EOF

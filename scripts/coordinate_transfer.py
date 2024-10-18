@@ -5,7 +5,7 @@ import rospy
 import torch
 
 from coordinate_transfer_net import ImplicitCoordinateTransfer
-from nico_demo.srv import CoordinateTransfer
+from elmira.srv import CoordinateTransfer
 
 
 class ImplicitCoordinateTransferServer:
@@ -49,3 +49,4 @@ class ImplicitCoordinateTransferServer:
 
 if __name__ == "__main__":
     ImplicitCoordinateTransferServer()
+()

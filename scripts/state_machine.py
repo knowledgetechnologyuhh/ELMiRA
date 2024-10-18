@@ -6,8 +6,8 @@ import smach
 import smach_ros
 
 from actionlib_msgs.msg import GoalStatus
-from nico_demo.msg import PerformASRAction
-from nico_demo.srv import PromptTextLLM, PromptVisionLLM
+from elmira.msg import PerformASRAction
+from elmira.srv import PromptTextLLM, PromptVisionLLM
 from nicomsg.srv import SayText
 from nicomsg.msg import empty
 
@@ -17,7 +17,7 @@ from states.action_parser import ActionParser
 
 
 def main():
-    rospy.init_node("nico_demo_state_machine")
+    rospy.init_node("elmira_state_machine")
 
     # Create a state machine
     sm = smach.StateMachine(outcomes=["succeeded", "aborted", "preempted"])
@@ -393,7 +393,7 @@ def main():
         )
 
     # Create and start the introspection server for visualization
-    sis = smach_ros.IntrospectionServer("nico_demo_introspection", sm, "/NICO_DEMO")
+    sis = smach_ros.IntrospectionServer("elmira_introspection", sm, "/ELMiRA")
     sis.start()
     # Execute state machine
     sm.execute()
@@ -401,4 +401,6 @@ def main():
 
 
 if __name__ == "__main__":
+    main()
+_":
     main()
