@@ -5,7 +5,7 @@
 
 1. Install [NICO-software](https://github.com/knowledgetechnologyuhh/NICO-software) and place this repository inside `NICO-software/api/src`
 
-2. Download [open_manipulator_msgs](https://github.com/ROBOTIS-GIT/open_manipulator_msgs) and place it inside `NICO-software/api/src`
+2. Make sure [open_manipulator_msgs](https://wiki.ros.org/open_manipulator_msgs) is installed on your system or manually download it from [github](https://github.com/ROBOTIS-GIT/open_manipulator_msgs) and place it inside `NICO-software/api/src`
 
 3. Install required python packages:
 

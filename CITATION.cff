@@ -6,7 +6,7 @@ authors:
 - family-names: "Özdemir"
   given-names: "Ozan"
 title: "ELMiRA: Embodying Language Models in Robot Action"
-version: 1.0.0
+version: 1.0.1
 date-released: 2024-09-11
 url: "https://github.com/knowledgetechnologyuhh/ELMiRA"
 preferred-citation:
