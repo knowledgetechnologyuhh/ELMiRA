@@ -218,4 +218,3 @@ if __name__ == "__main__":
     except openai.OpenAIError as e:
         rospy.logerr(e)
 # EOF
-OF

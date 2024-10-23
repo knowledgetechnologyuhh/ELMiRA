@@ -359,4 +359,3 @@ class ConcurrentPlanAndVerify(smach.Concurrence):
             and outcome_map["CHECK_OBJECT_VISIBILITY"] == "succeeded"
         ):
             return "succeeded"
-d"

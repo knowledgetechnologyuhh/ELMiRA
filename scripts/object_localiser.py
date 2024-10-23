@@ -168,4 +168,3 @@ class OWLv2Server:
 
 if __name__ == "__main__":
     OWLv2Server()
-ver()

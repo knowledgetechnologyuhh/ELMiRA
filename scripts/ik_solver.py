@@ -12,11 +12,15 @@ class KinematicsServer:
     def __init__(self):
         rospy.init_node("kinematics_server")
         urdf_dir = join(dirname(abspath(__file__)), pardir, "urdf")
+        if torch.cuda.is_available():
+            device = torch.device("cuda")
+        else:
+            device = torch.device("cpu")
         self.left_arm = EvoIK(
-            join(urdf_dir, "nico_left_arm.urdf"), "left_tcp", device="cuda:0"
+            join(urdf_dir, "nico_left_arm.urdf"), "left_tcp", device=device
         )
         self.right_arm = EvoIK(
-            join(urdf_dir, "nico_right_arm.urdf"), "right_tcp", device="cuda:0"
+            join(urdf_dir, "nico_right_arm.urdf"), "right_tcp", device=device
         )
         rospy.Service(
             "inverse_kinematics", InverseKinematics, self.get_inverse_kinematics
@@ -70,4 +74,3 @@ class KinematicsServer:
 
 if __name__ == "__main__":
     KinematicsServer()
-ver()

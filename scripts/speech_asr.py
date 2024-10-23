@@ -1166,6 +1166,3 @@ class DelayedDeleter:
 if __name__ == "__main__":
 	main()
 # EOF
-name__ == "__main__":
-	main()
-# EOF
